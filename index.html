@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Creature Clash – Multiplayer</title>
+<style>
+/* CSS Resets & Variabelen */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;}
+:root{
+  --bg:#0f0e1a;--panel:#f5f0e1;--black:#111;--white:#fff;
+  --red:#e63946;--blue:#457b9d;--gold:#f4a261;--green:#2a9d8f;--purple:#7b2d8d;
+  --hp-red:#d62828;--hp-green:#588157;
+  --card-w:105px;--card-h:168px;
+  --comic-shadow:3px 3px 0 #111;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;touch-action:none;}
+
+#appRoot{
+  position:absolute; inset:0;
+  background:var(--bg); overflow:hidden;
+  display:flex; flex-direction:column;
+}
+
+/* ─── OVERLAY / MODAL ─── */
+.overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(10,10,30,.96);flex-direction:column;gap:12px;padding:20px;overflow-y:auto;}
+.overlay h1{font-size:2.2em;color:var(--gold);text-shadow:3px 3px 0 #111;letter-spacing:2px;text-transform:uppercase;text-align:center;}
+.overlay h2{font-size:1.3em;color:var(--white);text-shadow:2px 2px 0 #111;text-align:center;}
+.overlay p{color:#ccc;font-size:.95em;text-align:center;max-width:480px;line-height:1.4;}
+.btn{display:inline-block;padding:14px 32px;font-size:1.15em;font-weight:700;color:var(--white);background:var(--red);border:4px solid var(--black);border-radius:10px;box-shadow:var(--comic-shadow);cursor:pointer;text-transform:uppercase;letter-spacing:1px;transition:transform .1s,opacity .15s;-webkit-appearance:none;}
+.btn:active{transform:scale(.93);box-shadow:1px 1px 0 #111;}
+.btn:disabled{opacity:.35;cursor:default;}
+.btn:disabled:active{transform:none;}
+.btn.blue{background:var(--blue);}
+.btn.green{background:var(--green);}
+.btn.gold{background:var(--gold);color:#111;}
+.btn.purple{background:var(--purple);}
+.btn.sm{padding:8px 16px;font-size:.85em;}
+.btn.xs{padding:5px 12px;font-size:.75em;}
+
+input[type="text"] {
+    background: rgba(255,255,255,0.1); border: 2px solid var(--gold); border-radius: 8px;
+    color: var(--white); font-weight: bold; outline: none; transition: border-color 0.2s;
+}
+input[type="text"]:focus { border-color: var(--white); }
+
+/* ─── GAME BOARD ─── */
+#game{display:none;width:100%;height:100%;position:relative;flex-direction:column;}
+.player-half{width:100%;flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.player-half.opp { justify-content: flex-start; border-bottom: 2px solid rgba(255,255,255,0.1); }
+.player-half.me { justify-content: flex-end; border-top: 2px solid rgba(255,255,255,0.1); }
+
+.player-hud{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;background:rgba(0,0,0,.7);color:var(--white);flex-shrink:0;height:42px;border-bottom:3px solid rgba(255,255,255,.15);transition:box-shadow .2s,background .2s;position:relative;z-index:60;}
+.player-half.me .player-hud { border-bottom:none; border-top:3px solid rgba(255,255,255,.15); }
+
+.player-hud.active-turn{box-shadow:inset 0 0 0 2px var(--gold);background:rgba(244,162,97,.14);}
+.player-hud .name{font-weight:700;font-size:1em;text-shadow:1px 1px 0 #000;}
+.hp-wrap{display:flex;align-items:center;gap:6px;}
+.hp-bar{width:110px;height:20px;background:#222;border:2px solid #444;border-radius:10px;overflow:visible;position:relative;}
+.hp-fill{height:100%;transition:width .4s;border-radius:8px;}
+.hp-fill.healthy{background:linear-gradient(90deg,#588157,#6baf5a);}
+.hp-fill.hurt{background:linear-gradient(90deg,#e07b00,#f4a261);}
+.hp-fill.critical{background:linear-gradient(90deg,#d62828,#e63946);}
+.hp-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.72em;font-weight:700;color:#fff;text-shadow:1px 1px 1px #000;}
+.hud-btns{display:flex;gap:5px;}
+
+/* ─── ZONES ─── */
+.local-zone{display:flex;gap:5px;justify-content:center;align-items:center;padding:4px 6px;flex-shrink:0;min-height:calc(var(--card-h) + 12px);background:rgba(255,255,255,.03);}
+.player-half.opp .local-zone { border-bottom:2px solid rgba(255,255,255,.08); }
+.player-half.me .local-zone { border-top:2px solid rgba(255,255,255,.08); }
+
+.slot{width:var(--card-w);height:var(--card-h);border:2px dashed rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;transition:border-color .2s,background .2s;}
+.slot.drop-target{border-color:rgba(244,162,97,.5);}
+.slot.drop-target-hover{border-color:var(--gold);border-style:solid;background:rgba(244,162,97,.15);}
+.slot .card{position:absolute;inset:0;margin:auto;}
+.slot-idx{position:absolute;bottom:2px;right:4px;font-size:.5em;color:rgba(255,255,255,.2);font-weight:700;}
+
+.hand-zone{display:flex;gap:5px;justify-content:center;align-items:center;padding:4px 6px;flex:1;overflow-x:auto;overflow-y:hidden;min-height:60px;position:relative;}
+
+/* ─── ARENA ─── */
+.arena{position:absolute;left:0;width:100%;top:50%;transform:translateY(-50%);height:170px;background:linear-gradient(180deg,rgba(123,45,141,.25),rgba(10,10,30,.6),rgba(230,57,70,.25));border-top:3px solid rgba(255,255,255,.15);border-bottom:3px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;gap:20px;z-index:50;pointer-events:none;}
+.arena-slot{width:calc(var(--card-w) + 8px);height:calc(var(--card-h) + 8px);border:2px dashed rgba(255,255,255,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;position:relative;transition:border-color .2s,background .2s;pointer-events:auto;}
+.arena-slot.drop-target{border-color:rgba(244,162,97,.6);}
+.arena-slot.drop-target-hover{border-color:var(--gold);border-style:solid;background:rgba(244,162,97,.2);box-shadow:0 0 14px rgba(244,162,97,.5);}
+.arena-slot .label-top,.arena-slot .label-bot{position:absolute;font-size:.6em;color:rgba(255,255,255,.7);font-weight:700;text-shadow:1px 1px 0 #000;pointer-events:none;}
+.arena-slot .label-top{top:-16px;}
+.arena-slot .label-bot{bottom:-16px;}
+.vs-badge{width:44px;height:44px;background:radial-gradient(circle,var(--gold),#c97a30);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1em;font-weight:900;color:#111;box-shadow:0 0 16px rgba(244,162,97,.4);flex-shrink:0;}
+
+/* ─── CARDS ─── */
+.card{
+  width:var(--card-w);height:var(--card-h);
+  border-radius:8px;position:relative;cursor:pointer;flex-shrink:0;
+  transition: transform .3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow .2s;
+  perspective:600px;
+}
+.card:active{transform:scale(1.05);z-index:99;}
+.card-inner{width:100%;height:100%;border-radius:8px;position:relative;transform-style:preserve-3d;transition:transform .45s;}
+.card.face-down .card-inner{transform:rotateY(180deg);}
+.card-front,.card-back{position:absolute;inset:0;border-radius:8px;backface-visibility:hidden;overflow:hidden;}
+.card-back{transform:rotateY(180deg);background:repeating-linear-gradient(45deg,#252540,#252540 6px,#32325a 6px,#32325a 12px);border:3px solid #444;display:flex;align-items:center;justify-content:center;}
+.card-back::after{content:'?';font-size:2.2em;font-weight:900;color:rgba(255,255,255,.2);}
+
+.card-front{background:var(--panel);border:3px solid var(--black);display:flex;flex-direction:column;}
+.card.rarity-common .card-front{border-color:#555;}
+.card.rarity-rare .card-front{border-color:#3a7bd5;box-shadow:0 0 8px rgba(58,123,213,.4);}
+.card.rarity-epic .card-front{border-color:var(--purple);box-shadow:0 0 10px rgba(123,45,141,.5);animation:epicPulse 2.2s ease-in-out infinite;}
+.card.rarity-legendary .card-front{border-color:var(--gold);background:linear-gradient(135deg,#f5f0e1,#fff8dc,#f5f0e1);box-shadow:0 0 14px rgba(244,162,97,.5);}
+@keyframes epicPulse{0%,100%{box-shadow:0 0 8px rgba(123,45,141,.4);}50%{box-shadow:0 0 16px rgba(123,45,141,.85);}}
+
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:2px 4px;border-bottom:2px solid var(--black);height:20px;flex-shrink:0;}
+.tribute-badge{min-width:16px;height:16px;background:var(--gold);border:2px solid var(--black);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.55em;font-weight:900;color:#111;}
+.card-title{flex:1;text-align:center;font-size:.5em;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:.3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 2px;}
+.spd-badge{background:#ffe066;border:2px solid var(--black);border-radius:4px;padding:0 3px;font-size:.55em;font-weight:900;color:#111;}
+
+.rarity-strip{text-align:center;font-size:.42em;font-weight:900;letter-spacing:.8px;padding:1.5px 0;border-bottom:2px solid var(--black);text-transform:uppercase;flex-shrink:0;}
+.rarity-strip.common{background:#555;color:#eee;}
+.rarity-strip.rare{background:#3a7bd5;color:#fff;}
+.rarity-strip.epic{background:var(--purple);color:#fff;}
+.rarity-strip.legendary{background:var(--gold);color:#111;}
+
+.card-art{flex:1;display:flex;align-items:center;justify-content:center;border-bottom:2px solid var(--black);position:relative;overflow:hidden;min-height:46px;}
+.card-art .emoji{font-size:2.6em;position:relative;z-index:2;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.3));}
+.card-art .art-bg{position:absolute;inset:0;opacity:.3;}
+
+.card.rarity-rare .card-art{background:radial-gradient(circle,rgba(58,123,213,.15),transparent 70%);}
+.card.rarity-epic .card-art{background:radial-gradient(circle,rgba(123,45,141,.18),transparent 70%);}
+.card.rarity-legendary .card-art{background:radial-gradient(circle,rgba(244,162,97,.28),transparent 72%);}
+.card.rarity-legendary .card-art::before{
+  content:'';position:absolute;width:42px;height:42px;top:50%;left:50%;
+  transform:translate(-50%,-50%);border:2px solid var(--gold);border-radius:50%;
+  box-shadow:0 0 10px rgba(244,162,97,.7),inset 0 0 6px rgba(244,162,97,.5);
+  pointer-events:none;z-index:1;
+}
+.card.rarity-legendary .card-art .emoji{font-size:3.15em;filter:drop-shadow(0 0 4px rgba(244,162,97,.85)) drop-shadow(1px 1px 0 rgba(0,0,0,.4));}
+
+.card-text{padding:3px 4px;font-size:.5em;line-height:1.35;color:#333;border-bottom:2px solid var(--black);min-height:30px;max-height:38px;overflow:hidden;background:rgba(255,255,255,.6);font-weight:500;}
+
+.card-footer{display:flex;justify-content:space-between;padding:2px 4px;height:20px;align-items:center;flex-shrink:0;}
+.atk-badge{background:var(--red);color:#fff;border:2px solid var(--black);border-radius:4px;padding:0 5px;font-size:.6em;font-weight:900;transition:transform .15s;}
+.def-badge{background:var(--blue);color:#fff;border:2px solid var(--black);border-radius:4px;padding:0 5px;font-size:.6em;font-weight:900;transition:transform .15s;}
+.counterfeit-tag{position:absolute;top:22px;right:2px;font-size:.4em;background:#ff6b6b;color:#fff;padding:1px 4px;border-radius:3px;font-weight:700;z-index:10;}
+.relic-tag{position:absolute;top:22px;left:2px;font-size:.4em;background:linear-gradient(90deg,#f4a261,#ff6b6b);color:#111;padding:1px 4px;border-radius:3px;font-weight:900;z-index:10;}
+
+.card-info-bar{background:rgba(0,0,0,.85);color:#fff;text-align:center;font-size:.55em;font-weight:bold;padding:5px 0;letter-spacing:1px;cursor:pointer;border-top:2px solid var(--black);text-transform:uppercase;transition:background .2s,color .2s;flex-shrink:0;}
+.card-info-bar:active{background:var(--gold);color:var(--black);}
+
+/* ─── DRAG GHOST ─── */
+.drag-ghost{position:fixed;top:0;left:0;pointer-events:none;z-index:700;filter:drop-shadow(0 12px 16px rgba(0,0,0,.6)); transition: transform 0.05s ease-out;}
+
+/* ─── CONFIRM MODAL (kept for sacrifices) ─── */
+.confirm-modal{position:fixed;z-index:900;background:rgba(10,10,30,.92);border:3px solid var(--gold);border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:10px;max-width:260px;box-shadow:0 8px 32px rgba(0,0,0,.6);top:50%;left:50%;transform:translate(-50%,-50%);}
+.confirm-modal h3{color:var(--gold);font-size:.95em;text-align:center;text-shadow:1px 1px 0 #000;}
+.confirm-modal p{color:#ccc;font-size:.8em;text-align:center;}
+.confirm-btns{display:flex;gap:8px;}
+
+/* ─── CARD INSPECT ─── */
+.inspect-overlay-fixed{position:fixed;left:0;width:100%;top:0;height:100%;background:rgba(0,0,0,.88);z-index:960;display:flex;align-items:center;justify-content:center;overflow-y:auto;flex-direction:column;gap:10px;}
+.inspect-card-big{margin:34px 20px 10px;}
+.inspect-card-big .card{transform:scale(2.3);cursor:default;}
+.inspect-stats-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:6px;}
+.inspect-stat{display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(255,255,255,.08);border-radius:8px;padding:6px 12px;min-width:56px;}
+.inspect-stat .val{font-size:1.3em;font-weight:900;color:var(--white);}
+.inspect-stat .lbl{font-size:.65em;color:#aaa;text-transform:uppercase;letter-spacing:.5px;}
+.inspect-rarity-label{font-size:.95em;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:3px 14px;border-radius:20px;border:2px solid var(--black);}
+.inspect-rarity-label.common{background:#555;color:#ddd;}
+.inspect-rarity-label.rare{background:#3a7bd5;color:#fff;}
+.inspect-rarity-label.epic{background:var(--purple);color:#fff;}
+.inspect-rarity-label.legendary{background:var(--gold);color:#111;}
+.inspect-lore{color:#ddd;font-size:1em;text-align:center;line-height:1.5;max-width:340px;}
+
+/* ─── DRAFT ─── */
+#draft{display:none;position:fixed;inset:0;z-index:900;background:rgba(10,10,30,.96);padding:20px;}
+.draft-shell{display:flex;flex-direction:column;height:100%;}
+.draft-shell h2,.draft-shell .draft-info,.draft-shell .draft-deck-info{flex-shrink:0;}
+.pkg-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
+#draft h2{text-align:center;color:var(--gold);font-size:1.3em;text-shadow:2px 2px 0 #111;margin-bottom:4px;}
+.draft-info{text-align:center;color:#ccc;font-size:.85em;margin-bottom:8px;}
+.draft-deck-info{text-align:center;color:#888;font-size:.7em;margin-bottom:10px;}
+.pkg-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+.package{background:rgba(255,255,255,.05);border:3px solid rgba(255,255,255,.12);border-radius:12px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:border-color .2s,transform .15s;}
+.package:active{transform:scale(.97);}
+.package.relic-pack{border-color:#ff6b6b;box-shadow:0 0 14px rgba(255,107,107,.4);}
+.pkg-title{color:var(--white);font-size:.7em;font-weight:700;text-align:center;}
+.pkg-cards{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;max-width:calc(var(--card-w) * 3.5);}
+.pkg-cards .card{transform:scale(.85);}
+
+/* ─── PHASE BANNER ─── */
+.phase-banner{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);z-index:800;background:rgba(10,10,30,.92);border:3px solid var(--gold);border-radius:14px;padding:14px 28px;text-align:center;pointer-events:none;animation:bannerPop .5s ease-out;max-width:80vw;}
+.phase-banner h2{color:var(--gold);font-size:1.4em;text-shadow:2px 2px 0 #111;text-transform:uppercase;}
+.phase-banner p{color:#ccc;font-size:.8em;margin-top:4px;}
+.phase-banner.synergy{border-color:#ff9f43;}
+@keyframes bannerPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.7);}100%{opacity:1;transform:translate(-50%,-50%) scale(1);}}
+
+/* ─── BATTLE LOG ─── */
+.battle-log{position:fixed;left:50%;transform:translateX(-50%);z-index:60;background:rgba(0,0,0,.8);border:2px solid rgba(244,162,97,.3);border-radius:8px;padding:6px 10px;max-width:360px;width:90%;text-align:center;pointer-events:none;max-height:80px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;}
+.battle-log.me { bottom: calc(50% + 90px); }
+.log-entry{font-size:.7em;color:var(--white);opacity:1;transition:opacity .5s;line-height:1.3;}
+.log-entry.old{opacity:.45;}
+.log-entry.dmg{color:#ff6b6b;}
+.log-entry.heal{color:#6baf5a;}
+.log-entry.info{color:var(--gold);}
+
+/* ─── POST GAME ─── */
+.postgame-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0;max-width:360px;}
+.pg-col{background:rgba(255,255,255,.06);border-radius:10px;padding:10px;text-align:center;}
+.pg-col h3{color:var(--gold);font-size:.9em;margin-bottom:6px;}
+.pg-col .stat-line{color:#ccc;font-size:.78em;margin:3px 0;}
+
+/* ─── ANIMATIONS ─── */
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-5px);}40%{transform:translateX(5px);}60%{transform:translateX(-3px);}80%{transform:translateX(3px);}}
+.shake{animation:shake .35s ease-in-out;}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-32px);}}
+.dmg-float{position:absolute;top:-4px;left:50%;transform:translateX(-50%);font-size:1.3em;font-weight:900;color:#ff5c5c;text-shadow:2px 2px 0 #000;animation:floatUp .8s ease-out forwards;z-index:100;pointer-events:none;white-space:nowrap;}
+@keyframes statPulse{0%{transform:scale(1);}50%{transform:scale(1.55);filter:brightness(1.7);}100%{transform:scale(1);}}
+.stat-pulse{animation:statPulse .5s ease-out;}
+@keyframes sacrificeBurn{0%{opacity:1;transform:scale(1) rotate(0);}100%{opacity:0;transform:scale(.25) rotate(20deg);filter:brightness(3) saturate(0);}}
+.sacrifice-burn{animation:sacrificeBurn .38s ease-in forwards;}
+@keyframes sparkFly{0%{transform:translate(-50%,-50%) scale(1);opacity:1;}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(0);opacity:0;}}
+.spark{position:absolute;top:50%;left:50%;width:6px;height:6px;border-radius:50%;animation:sparkFly .65s ease-out forwards;pointer-events:none;z-index:120;}
+
+/* Visual effects */
+.adj-flaming .art-bg{background:linear-gradient(0deg,#ff4500,#ff8c00,#ffd700)!important;opacity:.45!important;}
+.adj-frozen .art-bg{background:linear-gradient(180deg,#a8d8ea,#caf0f8,#e0fbfc)!important;opacity:.45!important;}
+.adj-radioactive .art-bg{background:radial-gradient(circle,#39ff14,#1a1a2e)!important;opacity:.45!important;}
+.adj-radioactive .emoji{filter:drop-shadow(0 0 6px #39ff14)!important;}
+.adj-cybernetic .art-bg{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)!important;opacity:.45!important;}
+.adj-cybernetic .emoji{filter:drop-shadow(0 0 5px #00f0ff)!important;}
+.adj-cursed .art-bg{background:linear-gradient(180deg,#1a0a2e,#4a0e4e,#1a0a2e)!important;opacity:.5!important;}
+.adj-depressed .art-bg{background:linear-gradient(180deg,#1b2838,#2c3e50,#1b2838)!important;opacity:.45!important;}
+.adj-quantum .art-bg{background:repeating-conic-gradient(#6c5ce7 0 30deg,transparent 30deg 60deg)!important;opacity:.2!important;}
+.adj-overenthusiastic .art-bg{background:linear-gradient(135deg,#ff6b6b,#feca57,#48dbfb,#ff9ff3)!important;opacity:.35!important;}
+.adj-socially-awkward .art-bg{background:repeating-linear-gradient(90deg,#dfe6e9 0 4px,#b2bec3 4px 8px)!important;opacity:.35!important;}
+.adj-ghostly .art-bg{background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(200,200,255,.1))!important;opacity:.4!important;}
+.adj-ghostly .emoji{opacity:.75;}
+.adj-ethereal .art-bg{background:linear-gradient(135deg,#00fff0,#a29bfe,#00fff0)!important;background-size:200% 200%;opacity:.35!important;animation:holoShine 3s linear infinite;}
+@keyframes holoShine{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+.adj-anxious .art-bg{background:repeating-linear-gradient(45deg,#3d5a80 0 6px,#293241 6px 12px)!important;opacity:.4!important;}
+.adj-anxious .emoji{filter:drop-shadow(0 0 3px rgba(255,255,255,.4)) blur(.3px)!important;}
+.adj-caffeinated .art-bg{background:radial-gradient(circle,#f4a261,#d97706,#78350f)!important;opacity:.4!important;}
+.adj-caffeinated .emoji{filter:drop-shadow(1px 0 0 #f4a261) drop-shadow(-1px 0 0 #f4a261)!important;}
+.adj-nano-enhanced .art-bg{background:repeating-linear-gradient(90deg,#0a3d62 0 3px,#1e6091 3px 6px)!important;opacity:.4!important;}
+.adj-nano-enhanced .emoji{filter:drop-shadow(0 0 4px #00d4ff)!important;}
+.adj-electric .art-bg{background:linear-gradient(180deg,#fff59d,#ffd54f,#f9a825)!important;opacity:.45!important;}
+.adj-electric .emoji{filter:drop-shadow(0 0 5px #fff176) drop-shadow(0 0 2px #ffeb3b)!important;}
+.adj-venomous .art-bg{background:radial-gradient(circle,#39ff14,#2d5016,#0a2f0a)!important;opacity:.4!important;}
+.adj-venomous .emoji{filter:drop-shadow(0 0 4px #39ff14)!important;}
+
+.card.spell-card .card-front{background:linear-gradient(135deg,#dcd0ff,#e8daff);}
+.card.spell-card .card-art{background:rgba(123,45,141,.08);}
+
+.screen-flash{position:fixed;inset:0;z-index:850;pointer-events:none;}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:600px){:root{--card-w:85px;--card-h:135px;} .card-text{font-size:.45em;}}
+</style>
+</head>
+<body>
+
+<div id="appRoot">
+
+<!-- LOBBY SCREEN -->
+<div class="overlay" id="lobbyScreen">
+  <h1>⚔️ Creature Clash ⚔️</h1>
+  <h2>Multiplayer Editie</h2>
+  <p>Een online kaartenspel voor 2 spelers. Draft wezens, bluf en strijd in de Arena. Om te spelen op twee apparaten heb je een code nodig.</p>
+  
+  <div style="display:flex;flex-direction:column;gap:15px;margin-top:20px;width:100%;max-width:300px;">
+     <button class="btn gold" onclick="window.hostGame()" id="btnHost" disabled>HOST SPEL (MAAK CODE)</button>
+     
+     <div style="display:flex;gap:10px;align-items:center;">
+       <input type="text" id="roomCodeInput" placeholder="BATTLE CODE" maxlength="6" style="padding:14px;font-size:1.1em;text-align:center;width:100%;text-transform:uppercase;">
+       <button class="btn blue" onclick="window.joinGame()" id="btnJoin" disabled>JOIN</button>
+     </div>
+  </div>
+  <p id="lobbyStatus" style="color:#f4a261; font-weight:bold; margin-top:15px;">Verbinden met de cloud...</p>
+</div>
+
+<!-- WAITING SCREEN -->
+<div class="overlay" id="waitingScreen" style="display:none;">
+    <h1>De code is: <span id="codeDisplay" style="color:var(--white)"></span></h1>
+    <p>Geef deze code aan je tegenstander. Het spel start zodra ze zijn verbonden.</p>
+</div>
+
+<!-- DRAFT SCREEN -->
+<div id="draft"></div>
+
+<!-- GAME BOARD -->
+<div id="game">
+  <!-- OPPONENT (Top) -->
+  <div class="player-half opp" id="opp-half">
+    <div class="hand-zone hidden-hand" id="opp-hand"></div>
+    <div class="local-zone" id="opp-local"></div>
+    <div class="player-hud">
+      <span class="name" id="opp-name">⚡ Tegenstander</span>
+      <div class="hp-wrap">
+        <div class="hp-bar" id="opp-hpBar"><div class="hp-fill healthy" id="opp-hpFill" style="width:100%"></div><div class="hp-text" id="opp-hpText">35/35</div></div>
+      </div>
+      <div class="hud-btns">
+         <!-- Opponent status badge -->
+         <span id="opp-status" style="font-size:0.8em; color:#aaa; font-weight:bold;">DENKT NA...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Arena -->
+  <div class="arena" id="arena">
+    <div class="arena-slot" id="opp-arena">
+      <span class="label-top">TEGENSTANDER</span>
+    </div>
+    <div class="vs-badge">⚔️</div>
+    <div class="arena-slot" id="me-arena">
+      <span class="label-bot">JIJ</span>
+    </div>
+  </div>
+
+  <div class="battle-log me" id="logMe"></div>
+
+  <!-- YOU (Bottom) -->
+  <div class="player-half me" id="me-half">
+    <div class="player-hud">
+      <span class="name" id="me-name">⚡ Jij</span>
+      <div class="hp-wrap">
+        <div class="hp-bar" id="me-hpBar"><div class="hp-fill healthy" id="me-hpFill" style="width:100%"></div><div class="hp-text" id="me-hpText">35/35</div></div>
+      </div>
+      <div class="hud-btns">
+        <button class="btn xs blue" id="me-ready-btn" onclick="window.playerReady()">KLAAR</button>
+      </div>
+    </div>
+    <div class="local-zone" id="me-local"></div>
+    <div class="hand-zone" id="me-hand"></div>
+  </div>
+</div>
+
+<!-- WIN SCREEN -->
+<div class="overlay" id="winScreen" style="display:none;"></div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// ═══════════════════════════════════════
+// GLOBALE DATA & AUDIO
+// ═══════════════════════════════════════
+const SFX = {
+  ctx: null,
+  init(){ if(this.ctx) return; this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+  play(freq, type, dur, vol=0.15){
+    this.init();
+    const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type=type; o.frequency.setValueAtTime(freq,this.ctx.currentTime);
+    g.gain.setValueAtTime(vol,this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,this.ctx.currentTime+dur);
+    o.connect(g); g.connect(this.ctx.destination);
+    o.start(); o.stop(this.ctx.currentTime+dur);
+  },
+  tap(){ this.play(800,'sine',0.06,0.08); },
+  hover(){ this.play(150, 'sine', 0.05, 0.02); }, 
+  place(){ this.play(440,'sine',0.1,0.12); this.play(660,'sine',0.08,0.08); },
+  flip(){ this.play(300,'sawtooth',0.08,0.06); setTimeout(()=>this.play(600,'sine',0.1,0.1),60); },
+  hit(){
+    this.init();
+    const buf=this.ctx.createBuffer(1,this.ctx.sampleRate*0.15,this.ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);
+    const s=this.ctx.createBufferSource(), g=this.ctx.createGain();
+    s.buffer=buf; g.gain.setValueAtTime(0.2,this.ctx.currentTime);
+    s.connect(g); g.connect(this.ctx.destination); s.start();
+  },
+  win(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>this.play(f,'sine',0.3,0.12),i*120)); },
+  phase(){ this.play(880,'sine',0.15,0.1); this.play(1100,'sine',0.1,0.06); },
+  spell(){ [600,800,1000,1200].forEach((f,i)=>setTimeout(()=>this.play(f,'sine',0.08,0.06),i*40)); },
+  heal(){ this.play(523,'sine',0.2,0.1); setTimeout(()=>this.play(784,'sine',0.2,0.1),100); },
+  synergy(){ [700,900,1300].forEach((f,i)=>setTimeout(()=>this.play(f,'triangle',0.15,0.1),i*70)); }
+};
+window.SFX = SFX;
+
+function screenFlash(color='#ff4757', dur=220){
+  const f=document.createElement('div');
+  f.className='screen-flash'; f.style.background=color; f.style.opacity='.55'; f.style.transition=`opacity ${dur}ms ease-out`;
+  document.body.appendChild(f);
+  requestAnimationFrame(()=>{ f.style.opacity='0'; });
+  setTimeout(()=>f.remove(), dur+80);
+}
+
+// NEDERLANDSE GAME DATA
+const NOUNS = {
+  underdog:[
+    {name:'Mops',emoji:'🐕',baseBudget:5},{name:'Luiaard',emoji:'🦥',baseBudget:5},
+    {name:'Blobvis',emoji:'🐡',baseBudget:4},{name:'Duif',emoji:'🐦',baseBudget:5},
+    {name:'Capibara',emoji:'🦫',baseBudget:5},{name:'Hamster',emoji:'🐹',baseBudget:4},
+    {name:'Axolotl',emoji:'🦎',baseBudget:5},{name:'Dodo',emoji:'🦤',baseBudget:4}
+  ],
+  apex:[
+    {name:'Zilverrug',emoji:'🦍',baseBudget:10},{name:'Witte Haai',emoji:'🦈',baseBudget:11},
+    {name:'Cobra',emoji:'🐍',baseBudget:9},{name:'Adelaar',emoji:'🦅',baseBudget:9},
+    {name:'T-Rex',emoji:'🦖',baseBudget:12},{name:'Wolf',emoji:'🐺',baseBudget:9},
+    {name:'Beer',emoji:'🐻',baseBudget:10}
+  ],
+  mythological:[
+    {name:'Minotaurus',emoji:'🧌',baseBudget:13},{name:'Kraken',emoji:'🐙',baseBudget:14},
+    {name:'Feniks',emoji:'🐦‍🔥',baseBudget:13},{name:'Draak',emoji:'🐉',baseBudget:15},
+    {name:'Eenhoorn',emoji:'🦄',baseBudget:11},{name:'Griffioen',emoji:'🦅',baseBudget:12},
+    {name:'Hydra',emoji:'🐍',baseBudget:14}
+  ]
+};
+
+const ADJECTIVES = [
+  {name:'Depressieve',css:'adj-depressed',budgetMod:0},
+  {name:'Ongemakkelijke',css:'adj-socially-awkward',budgetMod:-1},
+  {name:'Enthousiaste',css:'adj-overenthusiastic',budgetMod:1},
+  {name:'Angstige',css:'adj-anxious',budgetMod:-1},
+  {name:'Cafeïne',css:'adj-caffeinated',budgetMod:2},
+  {name:'Cybernetische',css:'adj-cybernetic',budgetMod:3},
+  {name:'Quantum',css:'adj-quantum',budgetMod:2},
+  {name:'Radioactieve',css:'adj-radioactive',budgetMod:2},
+  {name:'Nano',css:'adj-nano-enhanced',budgetMod:3},
+  {name:'Vlammende',css:'adj-flaming',budgetMod:2},
+  {name:'Vervloekte',css:'adj-cursed',budgetMod:1},
+  {name:'Bevroren',css:'adj-frozen',budgetMod:1},
+  {name:'Elektrische',css:'adj-electric',budgetMod:2},
+  {name:'Giftige',css:'adj-venomous',budgetMod:1},
+  {name:'Spookachtige',css:'adj-ghostly',budgetMod:0}
+];
+
+const PASSIVES = [
+  {text:'On Death: 2 damage aan aanvaller.',type:'ondeath',val:2},
+  {text:'Schild: Absorbeert de eerste klap.',type:'shield',val:0},
+  {text:'Doorns: Aanvaller krijgt 1 damage.',type:'thorns',val:1},
+  {text:'Aura: Buren krijgen +1 ATK.',type:'adj_atk',val:1},
+  {text:'Aura: Buren krijgen +1 DEF.',type:'adj_def',val:1},
+  {text:'On Death: Eigenaar heelt 2 HP.',type:'ondeath_heal',val:2},
+  {text:'Regen: +1 DEF per beurt.',type:'regen',val:1},
+  {text:'On Death: 3 damage aan tegenstander.',type:'ondeath_opp',val:3},
+  {text:'On Play: Trek 1 kaart.',type:'onplay_draw',val:1},
+  {text:'On Arena: Gluren naar Arena kaart.',type:'onarena_peek',val:0},
+  {text:'Overlever: Heelt eigenaar 2 HP na winst.',type:'onsurvive_heal',val:2}
+];
+
+const DEFENSIVE_PASSIVES = [
+  {text:'Schild: Absorbeert de eerste klap.',type:'shield',val:0},
+  {text:'Versterkt: +3 DEF in de Arena.',type:'fort',val:3},
+  {text:'On Death: 3 damage aan aanvaller.',type:'ondeath',val:3},
+  {text:'Regen: +2 DEF per beurt.',type:'regen',val:2},
+  {text:'Doorns: Aanvaller krijgt 2 damage.',type:'thorns',val:2}
+];
+
+const RELIC_PASSIVES = [
+  {text:'Instabiel: Eigenaar verliest 2 HP per beurt.',type:'relic_drain',val:2},
+  {text:'Overweldigend: Negeert Schild.',type:'relic_pierce',val:0},
+  {text:'Uitputtend: Verliest 1 ATK na elke aanval.',type:'relic_exhaust',val:1} // Deterministic replacement for Volatile
+];
+
+const SPELLS = [
+  {name:'Gedachten Lezen',text:'Bekijk vijandelijke Arena kaart.',effect:'peek',icon:'👁️'},
+  {name:'Stats Wissel',text:'Wissel ATK en DEF van vijandelijke kaart.',effect:'statswap',icon:'🔄'},
+  {name:'Krachtstoot',text:'Jouw Arena kaart krijgt +4 ATK.',effect:'atkBoost',icon:'💥'},
+  {name:'IJzeren Muur',text:'Jouw Arena kaart krijgt +4 DEF.',effect:'defBoost',icon:'🛡️'},
+  {name:'Snelheid',text:'Jouw Arena kaart krijgt +4 SPD.',effect:'spdBoost',icon:'⚡'},
+  {name:'Sabotage',text:'Vijandelijke Arena kaart krijgt -3 ATK.',effect:'sabotage',icon:'🔧'},
+  {name:'Heling',text:'Herstel 4 HP.',effect:'heal',icon:'💚'},
+  {name:'Verzwakken',text:'Vijandelijke Arena kaart krijgt -3 DEF.',effect:'weaken',icon:'💀'},
+  {name:'Bliksem',text:'3 directe damage aan tegenstander.',effect:'bolt',icon:'⚡'},
+  {name:'Inspecteer',text:'Onthul of vijandelijke kaart nep is.',effect:'inspect',icon:'🔍'}
+];
+
+// DATA GENERATORS
+let cardIdCounter = Math.floor(Math.random() * 1000000); // Random offset for unique IDs across clients
+function rng(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function pick(arr){return arr[rng(0,arr.length-1)];}
+
+function generateCreatureCard(){
+  const tier=pick(['underdog','underdog','underdog','apex','apex','mythological']);
+  const noun=pick(NOUNS[tier]);
+  const adj=pick(ADJECTIVES);
+  let budget=noun.baseBudget+adj.budgetMod+rng(-1,2);
+  budget=Math.max(4,budget);
+  const tributeCost = tier==='mythological'? rng(2,3) : tier==='apex'? rng(1,2) : rng(0,1);
+  budget-=tributeCost; budget=Math.max(3,budget);
+  let spd=rng(1,Math.min(7,Math.floor(budget*.5)));
+  let remaining=budget-spd;
+  let atk=rng(1,Math.max(1,remaining-1));
+  let def=Math.max(1,remaining-atk);
+
+  let passive=null;
+  if(spd<=2) passive=pick(DEFENSIVE_PASSIVES);
+  else if(Math.random()<.45) passive=pick(PASSIVES);
+
+  let totalStats=atk+def+spd;
+  let rarity='common';
+  if(totalStats>=16) rarity='legendary';
+  else if(totalStats>=12) rarity='epic';
+  else if(totalStats>=8) rarity='rare';
+
+  let counterfeit=false;
+  if(Math.random()<.05){ counterfeit=true; atk=1; def=1; spd=rng(1,2); rarity='legendary'; }
+
+  return { id:cardIdCounter++, type:'creature', name:`${adj.name} ${noun.name}`, emoji:noun.emoji, adjCss:adj.css, atk, def, spd, tributeCost, rarity, counterfeit, passive, spellEffect:null, faceDown:false, shieldActive: passive && passive.type==='shield', owner:null, baseAtk:atk, baseDef:def, baseSpd:spd, baseDef_original:def, tier, turnsHeld:0, isRelic:false };
+}
+
+function generateSpellCard(){
+  const spell=pick(SPELLS);
+  return { id:cardIdCounter++, type:'spell', name:spell.name, emoji:spell.icon, adjCss:'', atk:0,def:0,spd:0, tributeCost:0, rarity:'common', counterfeit:false, passive:null, spellEffect:spell, faceDown:false, shieldActive:false, owner:null, baseAtk:0,baseDef:0,baseSpd:0, baseDef_original:0, tier:'spell', turnsHeld:0, isRelic:false };
+}
+
+const RELIC_NAMES=['Voidwyrm','Chronofang','Omen Colossus','Starless Leviathan','Entropy Beast'];
+function generateRelicCard(){
+  const pool=NOUNS.mythological.concat(NOUNS.apex);
+  const noun=pick(pool);
+  const passive=pick(RELIC_PASSIVES);
+  const spd=rng(4,9), atk=rng(8,13), def=rng(6,11);
+  return { id:cardIdCounter++, type:'creature', name:`⚠️ Reliek: ${pick(RELIC_NAMES)}`, emoji:noun.emoji, adjCss:'', atk, def, spd, tributeCost:rng(2,3), rarity:'legendary', counterfeit:false, passive, spellEffect:null, faceDown:false, shieldActive:false, owner:null, baseAtk:atk, baseDef:def, baseSpd:spd, baseDef_original:def, tier:'relic', turnsHeld:0, isRelic:true };
+}
+
+const SPELL_BUDGET = { peek:6, statswap:9, atkBoost:8, defBoost:8, spdBoost:6, sabotage:7, heal:8, weaken:7, bolt:9, inspect:5, meteor:12 };
+
+function generatePackage(){
+  if(Math.random()<0.08){
+    const relic=generateRelicCard();
+    return {title:'⚠️ RELIEK PAKKET ⚠️', cards:[relic], totalPower:relic.atk+relic.def+relic.spd, isRelic:true};
+  }
+  const cards = [];
+  let currentScore = 0;
+  while(cards.length < 3) {
+    const isSpell = Math.random() < 0.25;
+    const card = isSpell ? generateSpellCard() : generateCreatureCard();
+    cards.push(card);
+    currentScore += isSpell ? SPELL_BUDGET[card.spellEffect.effect] ?? 8 : (card.atk + card.def + card.spd);
+    if(currentScore >= 24 && cards.length >= 2) break;
+  }
+  const themes=['Chaos Pack','Moed Bundel','Underdog Set','Apex Aanval','Mystieke Doos','Wild Cards','Kracht Pakket'];
+  const totalPower = cards.reduce((s,c) => s + (c.type==='spell' ? 0 : c.atk+c.def+c.spd), 0);
+  return {title:pick(themes), cards, totalPower};
+}
+
+
+// ═══════════════════════════════════════
+// FIREBASE & STATE SYNC
+// ═══════════════════════════════════════
+let auth, db, roomsRef;
+let roomCode = "";
+let myPlayerId = 1; // 1 = Host, 2 = Joiner
+let oppPlayerId = 2;
+let unsubscribe = null;
+
+function freshPlayer(){ return {hp:35,maxHp:35,deck:[],hand:[],localSlots:[null,null,null,null],arenaCard:null,ready:false,dmgDealt:0,cardsPlayed:0,spellsCast:0}; }
+
+let G = {
+  phase: 'lobby', turn: 1,
+  players: { 1: freshPlayer(), 2: freshPlayer() },
+  draftReady: { 1: false, 2: false },
+  logEntries: [], suddenDeath: false
+};
+const MAX_TURNS = 15;
+
+async function initFirebase() {
+  // 1. PLAK HIER JOUW EIGEN FIREBASE CONFIGURATIE:
+  const firebaseConfig = {
+    apiKey: "AIzaSyCeBtFUTnrqXCXBjt-AFpOYaliRzNhiVRo",
+    authDomain: "creature-clash-12a46.firebaseapp.com",
+    projectId: "creature-clash-12a46”,
+    storageBucket: "creature-clash-12a46.appspot.com",
+    messagingSenderId: "822881909512”,
+    appId: "1:822881909512:web:3c5f172d99894cca098abd”,
+  };
+
+  const app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  
+  // 2. AANGEPAST: We maken een simpele, schone map genaamd 'rooms' in jouw database
+  roomsRef = collection(db, 'rooms');
+
+  try {
+      // 3. AANGEPAST: We loggen puur in via de anonieme login die je hebt aangezet
+      await signInAnonymously(auth);
+      
+      document.getElementById('lobbyStatus').innerText = "Verbonden! Klaar om te spelen.";
+      document.getElementById('btnHost').disabled = false;
+      document.getElementById('btnJoin').disabled = false;
+  } catch (e) {
+      document.getElementById('lobbyStatus').innerText = "Fout bij inloggen: " + e.message;
+      console.error(e);
+  }
+}
+
+
+// ═══════════════════════════════════════
+// LOBBY LOGIC
+// ═══════════════════════════════════════
+window.hostGame = async () => {
+    SFX.tap();
+    document.getElementById('lobbyStatus').innerText = "Kamer aanmaken...";
+    roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+    myPlayerId = 1; oppPlayerId = 2;
+    G = { phase: 'lobby', turn: 1, players: { 1: freshPlayer(), 2: freshPlayer() }, draftReady: { 1: false, 2: false }, logEntries: [], suddenDeath: false };
+    
+    await setDoc(doc(roomsRef, roomCode), { G, created: Date.now() });
+    
+    document.getElementById('lobbyScreen').style.display = 'none';
+    document.getElementById('waitingScreen').style.display = 'flex';
+    document.getElementById('codeDisplay').innerText = roomCode;
+    listenToRoom();
+};
+
+window.joinGame = async () => {
+    SFX.tap();
+    const code = document.getElementById('roomCodeInput').value.toUpperCase().trim();
+    if(!code) return;
+    document.getElementById('lobbyStatus').innerText = "Zoeken...";
+    
+    const docSnap = await getDoc(doc(roomsRef, code));
+    if(!docSnap.exists()) {
+        document.getElementById('lobbyStatus').innerText = "Kamer niet gevonden!";
+        return;
+    }
+    roomCode = code;
+    myPlayerId = 2; oppPlayerId = 1;
+    
+    G = docSnap.data().G;
+    G.phase = 'draft'; // Trigger start
+    await updateDoc(doc(roomsRef, roomCode), { G });
+    
+    document.getElementById('lobbyScreen').style.display = 'none';
+    listenToRoom();
+};
+
+function listenToRoom() {
+    unsubscribe = onSnapshot(doc(roomsRef, roomCode), (snap) => {
+        if(!snap.exists()) return;
+        const data = snap.data();
+        const oldPhase = G.phase;
+        G = data.G;
+        
+        if(oldPhase === 'lobby' && G.phase === 'draft') {
+            document.getElementById('waitingScreen').style.display = 'none';
+            startLocalDraft();
+        } else if (oldPhase === 'draft' && G.phase === 'action') {
+            finishDraftAndStart();
+        } else if (oldPhase === 'action' && G.phase === 'resolution') {
+            startResolution(); // Deterministic combat animation locally
+        } else if (oldPhase === 'resolution' && G.phase === 'action') {
+            cleanupCombatUI();
+        } else if (G.phase === 'gameover') {
+            renderAll();
+            checkWinLocal();
+        } else {
+            renderAll();
+        }
+    }, (err) => console.error("Sync error:", err));
+}
+
+// Data Pushing Helper
+async function saveGameState() {
+    if(!roomCode) return;
+    try { await updateDoc(doc(roomsRef, roomCode), { G }); } 
+    catch(e) { console.error("Save error:", e); }
+}
+
+
+// ═══════════════════════════════════════
+// UI RENDERERS
+// ═══════════════════════════════════════
+function renderAll() {
+    if(G.phase === 'lobby' || G.phase === 'draft') return;
+    
+    // Player HP and Names
+    document.getElementById('me-hpText').innerText = `${Math.max(0, G.players[myPlayerId].hp)}/${G.players[myPlayerId].maxHp}`;
+    const pctMe = Math.max(0, G.players[myPlayerId].hp / G.players[myPlayerId].maxHp * 100);
+    document.getElementById('me-hpFill').style.width = pctMe + '%';
+    document.getElementById('me-hpFill').className = 'hp-fill '+(pctMe>50?'healthy':pctMe>25?'hurt':'critical');
+    
+    document.getElementById('opp-hpText').innerText = `${Math.max(0, G.players[oppPlayerId].hp)}/${G.players[oppPlayerId].maxHp}`;
+    const pctOpp = Math.max(0, G.players[oppPlayerId].hp / G.players[oppPlayerId].maxHp * 100);
+    document.getElementById('opp-hpFill').style.width = pctOpp + '%';
+    document.getElementById('opp-hpFill').className = 'hp-fill '+(pctOpp>50?'healthy':pctOpp>25?'hurt':'critical');
+
+    // Badges / Status
+    const meReady = G.players[myPlayerId].ready;
+    const oppReady = G.players[oppPlayerId].ready;
+    document.getElementById('me-ready-btn').innerText = meReady ? 'KLAAR ✓' : 'BEÏNDIG BEURT';
+    document.getElementById('me-ready-btn').disabled = meReady;
+    document.getElementById('opp-status').innerText = oppReady ? 'KLAAR ✓' : 'DENKT NA...';
+    document.getElementById('opp-status').style.color = oppReady ? '#6baf5a' : '#aaa';
+
+    // Board rendering
+    applyAdjacencyBuffs();
+    renderHand(myPlayerId, 'me-hand', false);
+    renderHand(oppPlayerId, 'opp-hand', true); // Always hidden hand for opponent
+    renderSlots(myPlayerId, 'me-local');
+    renderSlots(oppPlayerId, 'opp-local');
+    renderArenaSlot(myPlayerId, 'me-arena');
+    renderArenaSlot(oppPlayerId, 'opp-arena');
+    renderLogs();
+}
+
+function reconcileCardList(containerEl,cards,player,zone, isHidden=false){
+  const existing=new Map();
+  containerEl.querySelectorAll(':scope > .card').forEach(el=>existing.set(el.dataset.cardId,el));
+  const seen=new Set();
+  let prevEl=null;
+  cards.forEach(card=>{
+    const id=String(card.id);
+    seen.add(id);
+    let el=existing.get(id);
+    // Opponent cards in hand are totally obscured for security/visuals
+    let renderCard = isHidden ? { ...card, faceDown: true, type: 'creature' } : card; 
+    
+    if(el){ updateCardEl(el,renderCard); } 
+    else {
+      const div=document.createElement('div');
+      div.innerHTML=renderCardHTML(renderCard);
+      el=div.firstElementChild;
+      wireCard(el,card,player,zone);
+    }
+    if(prevEl) prevEl.after(el); else containerEl.prepend(el);
+    prevEl=el;
+  });
+  existing.forEach((el,id)=>{ if(!seen.has(id)) el.remove(); });
+}
+
+function renderHand(pid, containerId, isHidden) {
+    const handEl = document.getElementById(containerId);
+    reconcileCardList(handEl, G.players[pid].hand, pid, 'hand', isHidden);
+}
+
+function renderSlots(pid, containerId) {
+    const localEl=document.getElementById(containerId);
+    const slotEls=localEl.querySelectorAll('.slot');
+    slotEls.forEach((slotEl,i)=>{
+      const card=G.players[pid].localSlots[i];
+      const existingEl=slotEl.querySelector('.card');
+      if(!card){ if(existingEl) existingEl.remove(); return; }
+      if(existingEl && existingEl.dataset.cardId===String(card.id)){ updateCardEl(existingEl,card); return; }
+      if(existingEl) existingEl.remove();
+      const div=document.createElement('div');
+      div.innerHTML=renderCardHTML(card);
+      const cardEl=div.firstElementChild;
+      wireCard(cardEl,card,pid,'slot');
+      slotEl.appendChild(cardEl);
+    });
+}
+
+function renderArenaSlot(pid, containerId) {
+    const arenaEl=document.getElementById(containerId);
+    const card=G.players[pid].arenaCard;
+    const existingEl=arenaEl.querySelector('.card');
+    if(!card){ if(existingEl) existingEl.remove(); return; }
+    if(existingEl && existingEl.dataset.cardId===String(card.id)){ updateCardEl(existingEl,card); return; }
+    if(existingEl) existingEl.remove();
+    const div=document.createElement('div');
+    div.innerHTML=renderCardHTML(card);
+    const cardEl=div.firstElementChild;
+    wireCard(cardEl,card,pid,null);
+    arenaEl.appendChild(cardEl);
+}
+
+function updateCardEl(el,card){
+  const div=document.createElement('div');
+  div.innerHTML=renderCardHTML(card);
+  const fresh=div.firstElementChild;
+  el.className=fresh.className;
+  el.innerHTML=fresh.innerHTML;
+  wireCardInfo(el,card,el._player);
+}
+
+// ═══════════════════════════════════════
+// LOCAL DRAFT LOGIC
+// ═══════════════════════════════════════
+let localDraftDeck = [];
+let localDraftHand = [];
+
+function startLocalDraft() {
+    document.getElementById('game').style.display = 'none';
+    const draftEl = document.getElementById('draft');
+    draftEl.style.display = 'block';
+    renderDraftPicks();
+}
+
+function renderDraftPicks() {
+    const draftEl = document.getElementById('draft');
+    const totalCards = localDraftDeck.length + localDraftHand.length;
+    if(totalCards >= 14) {
+        draftEl.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;"><h2 style="color:var(--gold);">Klaar met draften!</h2><p style="color:#aaa;">Wachten op tegenstander...</p></div>`;
+        submitLocalDraft();
+        return;
+    }
+
+    const packages = [generatePackage(), generatePackage(), generatePackage(), generatePackage()];
+    const creatures = [...localDraftDeck, ...localDraftHand].filter(c=>c.type==='creature').length;
+    const spells = [...localDraftDeck, ...localDraftHand].filter(c=>c.type==='spell').length;
+
+    let html=`<div class="draft-shell">
+      <h2>Draft Jouw Deck</h2>
+      <div class="draft-info">Kaarten: ${totalCards}/14 — Kies een pakket.</div>
+      <div class="draft-deck-info">Huidig Deck: ${creatures} wezens, ${spells} spreuken</div>
+      <div class="pkg-scroll"><div class="pkg-row">`;
+
+    packages.forEach((pkg,i)=>{
+      const cCount=pkg.cards.filter(c=>c.type==='creature').length;
+      const sCount=pkg.cards.filter(c=>c.type==='spell').length;
+      html+=`<div class="package ${pkg.isRelic?'relic-pack':''}" data-cards='${JSON.stringify(pkg.cards).replace(/'/g, "&#39;")}' onclick="SFX.tap();window.pickPackage(this)">
+        <div class="pkg-title">${pkg.title}${pkg.isRelic?'':` (${cCount}W ${sCount}S) ⚡${pkg.totalPower}`}</div>
+        <div class="pkg-cards">${pkg.cards.map(c=>renderCardHTML(c)).join('')}</div>
+      </div>`;
+    });
+    html+=`</div></div></div>`;
+    draftEl.innerHTML = html;
+}
+
+window.pickPackage = (el) => {
+    const cards = JSON.parse(el.dataset.cards);
+    cards.forEach(c => {
+        c.owner = myPlayerId;
+        if(localDraftHand.length < 4) localDraftHand.push(c);
+        else localDraftDeck.push(c);
+    });
+    renderDraftPicks();
+};
+
+async function submitLocalDraft() {
+    G.players[myPlayerId].deck = localDraftDeck.sort(()=>Math.random()-.5);
+    G.players[myPlayerId].hand = localDraftHand;
+    G.draftReady[myPlayerId] = true;
+    await saveGameState();
+    
+    // Host transitions if both ready
+    if(myPlayerId === 1) checkBothDraftReady();
+}
+
+async function checkBothDraftReady() {
+    if(G.draftReady[1] && G.draftReady[2]) {
+        G.phase = 'action'; G.turn = 1;
+        drawCard(1); drawCard(2);
+        await saveGameState();
+    }
+}
+
+function drawCard(pid){ const pl=G.players[pid]; if(pl.deck.length>0 && pl.hand.length<7) pl.hand.push(pl.deck.shift()); }
+
+function finishDraftAndStart() {
+    document.getElementById('draft').style.display = 'none';
+    document.getElementById('game').style.display = 'flex';
+    renderAll();
+    showBanner(`Beurt ${G.turn}`, `Plaats kaarten of val aan.`);
+}
+
+// ═══════════════════════════════════════
+// GAME LOGIC (ACTIONS)
+// ═══════════════════════════════════════
+window.playerReady = async () => {
+    if(G.players[myPlayerId].ready) return;
+    
+    // Hand limit enforcement
+    const pl=G.players[myPlayerId];
+    while(pl.hand.length > 6){
+        const scored = pl.hand.map((c,idx)=>{
+            const score = c.type==='spell' ? (SPELL_BUDGET[c.spellEffect.effect] ?? 8) : (c.atk+c.def+c.spd);
+            return {c,idx,score};
+        }).sort((a,b)=>a.score-b.score);
+        pl.hand.splice(scored[0].idx,1);
+    }
+    
+    G.players[myPlayerId].ready = true;
+    SFX.tap();
+    renderAll();
+    await saveGameState();
+
+    if(myPlayerId === 1 && G.players[1].ready && G.players[2].ready) {
+        G.phase = 'resolution';
+        await saveGameState();
+    }
+};
+
+async function applyLocalTurnEffects() {
+    if(G.turn > 1) {
+        drawCard(myPlayerId);
+        applyRegen(); applyCursedDecay(); applyRelicDrain();
+    }
+    if(G.turn > MAX_TURNS){
+        if(!G.suddenDeath){ G.suddenDeath = true; showBanner('☠️ SUDDEN DEATH','3 HP drain per beurt!', 2200); }
+        G.players[1].hp -= 3; G.players[2].hp -= 3;
+        addLog('☠️ Sudden Death drain: beide spelers -3 HP!','dmg');
+        shakeHP(1); shakeHP(2);
+        showDmgFloat(document.getElementById('me-hpBar'),3);
+    }
+}
+
+// LOCAL ACTIONS (Triggered by Drag & Drop)
+async function placeCard(card, targetSlot) {
+    const pl = G.players[myPlayerId];
+    if(targetSlot===null || targetSlot===undefined){
+      targetSlot=pl.localSlots.indexOf(null);
+      if(targetSlot===-1){
+          if(card.tributeCost>0){ showTributeChoice(card); return true; } 
+          else { addLog('Geen lege slots!','info'); return false; }
+      }
+    }
+
+    const occupant=pl.localSlots[targetSlot];
+    if(occupant){
+      if(card.tributeCost<1){ addLog('Niet genoeg tribute voor offer!','info'); return false; }
+      pl.localSlots[targetSlot]=null;
+      if(card.tributeCost>=2){
+        const others=pl.localSlots.map((c,i)=>({c,i})).filter(o=>o.c && o.i!==targetSlot);
+        const need=Math.min(card.tributeCost-1,others.length);
+        for(let k=0;k<need;k++){ pl.localSlots[others[k].i]=null; }
+      }
+    }
+    
+    pl.hand = pl.hand.filter(c => c.id !== card.id);
+    card.faceDown = true;
+    pl.localSlots[targetSlot] = card;
+    pl.cardsPlayed++;
+    SFX.place();
+    if(card.passive && card.passive.type==='onplay_draw') drawCard(myPlayerId);
+    
+    await saveGameState();
+    return true;
+}
+
+function showTributeChoice(card){
+  if(G.confirmEl){ G.confirmEl.remove(); G.confirmEl=null; }
+  const pl = G.players[myPlayerId];
+  const occupied = pl.localSlots.map((c,i)=>({c,i})).filter(o=>o.c);
+  if(occupied.length===0) return; 
+
+  const m=document.createElement('div');
+  m.className=`confirm-modal`;
+  let btnsHtml = '';
+  occupied.forEach(o=>{
+    const c=o.c, stats = c.type==='creature' ? `⚔${c.baseAtk} 🛡${c.baseDef} ⚡${c.baseSpd}` : c.name;
+    btnsHtml += `<button class="btn xs" data-slot="${o.i}" style="background:#555;width:100%;text-align:left;padding:8px;font-size:.75em;">Slot ${o.i+1}: ${c.name} (${stats})</button>`;
+  });
+  m.innerHTML = `<h3>Welk wezen offeren?</h3><div class="confirm-btns" style="flex-direction:column;gap:5px;width:100%;">${btnsHtml}<button class="btn xs" id="tributeCancel" style="background:#333;color:#aaa;">Annuleren</button></div>`;
+  mountToApp(m);
+  G.confirmEl=m;
+  m.querySelectorAll('button[data-slot]').forEach(btn=>{
+    btn.addEventListener('pointerdown', async (e)=>{
+      e.stopPropagation(); SFX.place();
+      if(G.confirmEl){ G.confirmEl.remove(); G.confirmEl=null; }
+      await placeCard(card, parseInt(btn.dataset.slot));
+    });
+  });
+  m.querySelector('#tributeCancel').addEventListener('pointerdown',(e)=>{ e.stopPropagation(); SFX.tap(); if(G.confirmEl){ G.confirmEl.remove(); G.confirmEl=null; } });
+}
+
+async function sendToArena(card){
+  const pl=G.players[myPlayerId];
+  if(pl.arenaCard){ addLog('Je hebt al een wezen in de Arena!','info'); return false; }
+  const idx=pl.localSlots.findIndex(c=>c&&c.id===card.id);
+  if(idx===-1) return false;
+  pl.localSlots[idx]=null;
+  card.faceDown=true;
+  pl.arenaCard=card;
+  SFX.place();
+  if(card.rarity==='epic') spawnParticles(`me-arena`,'#7b2d8d');
+  if(card.rarity==='legendary') spawnParticles(`me-arena`,'#f4a261');
+  await saveGameState();
+  return true;
+}
+
+async function playSpell(card){
+  const pl=G.players[myPlayerId];
+  const oppTarget = G.players[oppPlayerId].arenaCard;
+  const myTarget = pl.arenaCard;
+  const effect=card.spellEffect.effect;
+  SFX.spell();
+
+  switch(effect){
+    case 'peek': if(oppTarget){ oppTarget.faceDown=false; renderAll(); setTimeout(()=>{ if(G.players[oppPlayerId].arenaCard) G.players[oppPlayerId].arenaCard.faceDown=true; renderAll(); },3000); } break;
+    case 'statswap': if(oppTarget){ const tmp=oppTarget.atk; oppTarget.atk=oppTarget.def; oppTarget.def=tmp; pulseStat(oppPlayerId,'atk-badge'); pulseStat(oppPlayerId,'def-badge'); } break;
+    case 'atkBoost': if(myTarget && !myTarget.isRelic){ myTarget.atk+=4; pulseStat(myPlayerId,'atk-badge'); } break;
+    case 'defBoost': if(myTarget && !myTarget.isRelic){ myTarget.def+=4; pulseStat(myPlayerId,'def-badge'); } break;
+    case 'spdBoost': if(myTarget && !myTarget.isRelic){ myTarget.spd+=4; } break;
+    case 'sabotage': if(oppTarget){ oppTarget.atk=Math.max(0,oppTarget.atk-3); pulseStat(oppPlayerId,'atk-badge'); } break;
+    case 'heal': pl.hp=Math.min(pl.maxHp,pl.hp+4); SFX.heal(); updateHP(); break;
+    case 'weaken': if(oppTarget){ oppTarget.def=Math.max(0,oppTarget.def-3); pulseStat(oppPlayerId,'def-badge'); } break;
+    case 'bolt': G.players[oppPlayerId].hp-=3; SFX.hit(); screenFlash('#ff4757'); G.players[myPlayerId].dmgDealt+=3; updateHP(); showDmgFloat(document.getElementById(`opp-hpBar`),3); break;
+    case 'meteor': G.players[oppPlayerId].hp-=5; SFX.hit(); screenFlash('#ff4757',300); G.players[myPlayerId].dmgDealt+=5; updateHP(); showDmgFloat(document.getElementById(`opp-hpBar`),5); break;
+  }
+  pl.hand=pl.hand.filter(c=>c.id!==card.id);
+  pl.spellsCast++;
+  await saveGameState();
+}
+
+// ═══════════════════════════════════════
+// DETERMINISTIC COMBAT ANIMATION
+// (Runs purely locally on both clients simultaneously)
+// ═══════════════════════════════════════
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+function getArenaDOM(pid) { return pid === myPlayerId ? 'me-arena' : 'opp-arena'; }
+function getHpBarDOM(pid) { return pid === myPlayerId ? 'me-hpBar' : 'opp-hpBar'; }
+
+async function startResolution(){
+  G.logEntries = []; // Clear logs for combat clarity
+  showBanner('⚔️ CLASH! ⚔️','Kaarten worden onthuld!');
+  
+  await sleep(700);
+  const c1=G.players[1].arenaCard, c2=G.players[2].arenaCard;
+  if(c1){ c1.faceDown=false; SFX.flip(); }
+  if(c2){ c2.faceDown=false; setTimeout(()=>SFX.flip(),200); }
+  renderAll();
+  
+  await sleep(1000);
+  await resolveCombatDeterministic();
+}
+
+async function resolveCombatDeterministic() {
+  let c1=G.players[1].arenaCard, c2=G.players[2].arenaCard;
+
+  const explode = (which)=>{
+    let c = which === 1 ? c1 : c2;
+    let target = which === 1 ? 2 : 1;
+    if(c && c.counterfeit){
+      const dmg = 2; G.players[target].hp -= dmg; G.players[which].dmgDealt += dmg;
+      addLog(`💥 BOOBY TRAP! ${c.name} was NEP!`,'dmg');
+      SFX.hit(); screenFlash('#ff4757'); showDmgFloat(document.getElementById(getHpBarDOM(target)),dmg);
+      G.players[which].arenaCard=null; 
+      if(which === 1) c1 = null; else c2 = null;
+    }
+  };
+  explode(1); explode(2);
+  updateHP(); renderAll();
+  if(checkWinLocal()) return;
+
+  if(c1 && c2){
+    let first,second,firstP,secondP;
+    if(c1.spd>c2.spd){ first=c1; second=c2; firstP=1; secondP=2; }
+    else if(c2.spd>c1.spd){ first=c2; second=c1; firstP=2; secondP=1; }
+    else { first=c1; second=c2; firstP=1; secondP=2; } // Deterministic: P1 wint ties
+
+    if(first.passive && first.passive.type==='fort') first.def+=first.passive.val;
+    if(second.passive && second.passive.type==='fort') second.def+=second.passive.val;
+    if(first.spd - second.spd >= 3){ second.def += 2; addLog(`Underdog Pantser! ${second.name} krijgt +2 DEF`,'info'); }
+
+    applySynergy(first,second,firstP,secondP);
+    addLog(`${first.name} (SPD ${first.spd}) valt eerst aan!`,'info');
+
+    let blocked1=false;
+    if(second.shieldActive){
+      if(first.passive && first.passive.type==='relic_pierce'){ addLog(`${first.name} negeert het Schild!`,'info'); } 
+      else { second.shieldActive=false; blocked1=true; addLog(`${second.name}'s Schild absorbeert de klap!`,'info'); }
+    }
+
+    let secondDestroyed=false;
+    if(!blocked1){
+      if(second.passive && second.passive.type==='thorns') G.players[firstP].hp-=second.passive.val;
+      const effAtk1=first.atk;
+
+      if(effAtk1>second.def){
+        const overflow=effAtk1-second.def;
+        secondDestroyed=true;
+        if(effAtk1 >= 6) await sleep(120); // Hitstop
+        SFX.hit();
+        G.players[firstP].dmgDealt+=overflow; G.players[secondP].hp-=overflow;
+        showDmgFloat(document.getElementById(getHpBarDOM(secondP)),overflow);
+        handleOnDeathLocal(second,secondP,firstP);
+      } else if(effAtk1===second.def && effAtk1>0){
+        secondDestroyed=true; SFX.hit(); handleOnDeathLocal(second,secondP,firstP);
+      }
+      
+      if(first.passive && first.passive.type==='relic_exhaust') first.atk = Math.max(0, first.atk - first.passive.val);
+    }
+    updateHP(); if(checkWinLocal()) return;
+
+    if(!secondDestroyed){
+      await sleep(1400);
+      let blocked2=false;
+      if(first.shieldActive){ first.shieldActive=false; blocked2=true; }
+      if(!blocked2){
+        if(first.passive && first.passive.type==='thorns') G.players[secondP].hp-=first.passive.val;
+        const effAtk2=second.atk;
+
+        if(effAtk2>first.def){
+          const overflow2=effAtk2-first.def;
+          if(effAtk2 >= 6) await sleep(120);
+          SFX.hit();
+          G.players[secondP].dmgDealt+=overflow2; G.players[firstP].hp-=overflow2;
+          showDmgFloat(document.getElementById(getHpBarDOM(firstP)),overflow2);
+          handleOnDeathLocal(first,firstP,secondP);
+        } else if(effAtk2===first.def && effAtk2>0){
+          SFX.hit(); handleOnDeathLocal(first,firstP,secondP);
+        }
+        if(second.passive && second.passive.type==='relic_exhaust') second.atk = Math.max(0, second.atk - second.passive.val);
+      }
+      updateHP(); if(checkWinLocal()) return;
+    }
+  } else if(c1 && !c2){
+    const dmg=c1.atk; G.players[2].hp-=dmg; G.players[1].dmgDealt+=dmg;
+    SFX.hit(); showDmgFloat(document.getElementById('opp-hpBar'),dmg); updateHP(); if(checkWinLocal()) return;
+  } else if(c2 && !c1){
+    const dmg=c2.atk; G.players[1].hp-=dmg; G.players[2].dmgDealt+=dmg;
+    SFX.hit(); showDmgFloat(document.getElementById('me-hpBar'),dmg); updateHP(); if(checkWinLocal()) return;
+  }
+
+  // Host Only cleanup sync to ensure exact state matching
+  if(myPlayerId === 1) {
+      await sleep(1500);
+      for(let p=1;p<=2;p++){
+        const c = G.players[p].arenaCard;
+        if(c && c.passive && c.passive.type==='onsurvive_heal'){
+          G.players[p].hp = Math.min(G.players[p].maxHp, G.players[p].hp + c.passive.val);
+        }
+      }
+      G.players[1].arenaCard=null; G.players[2].arenaCard=null;
+      for(let p=1;p<=2;p++){ G.players[p].localSlots.forEach(c=>{ if(c){ c.atk=c.baseAtk; c.def=c.baseDef; c.spd=c.baseSpd; } }); }
+      G.turn++; G.phase = 'action';
+      G.players[1].ready = false; G.players[2].ready = false;
+      await applyLocalTurnEffects(); // Host calculates HP drain / regen
+      await saveGameState();
+  }
+}
+
+function handleOnDeathLocal(card,ownerP,opponentP){
+  if(!card.passive) return;
+  const p=card.passive;
+  if(p.type==='ondeath'){ G.players[opponentP].hp-=p.val; addLog(`On Death: ${p.val} DMG!`,'dmg'); }
+  if(p.type==='ondeath_opp'){ G.players[opponentP].hp-=p.val; addLog(`On Death: ${p.val} DMG!`,'dmg'); }
+  if(p.type==='ondeath_heal'){ G.players[ownerP].hp=Math.min(G.players[ownerP].maxHp,G.players[ownerP].hp+p.val); SFX.heal(); }
+}
+
+function cleanupCombatUI() {
+    renderAll();
+    showBanner(`Beurt ${G.turn}`, `Jouw beurt!`);
+}
+
+function checkWinLocal(){
+  const p1Dead = G.players[1].hp<=0;
+  const p2Dead = G.players[2].hp<=0;
+  if(p1Dead && p2Dead){
+    if(myPlayerId === 1) { G.phase = 'gameover'; saveGameState(); }
+    return true;
+  }
+  if(p1Dead || p2Dead){
+    if(myPlayerId === 1) { G.phase = 'gameover'; saveGameState(); }
+    return true;
+  }
+  return false;
+}
+
+// ═══════════════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════════════
+let dragState=null;
+
+function onCardPointerDown(e,card,player,zone){
+  if(!zone || player !== myPlayerId || G.players[myPlayerId].ready || G.phase !== 'action') return; 
+  e.preventDefault(); e.stopPropagation();
+  if(G.confirmEl) return;
+
+  dragState={ card, player, zone, startX:e.clientX, startY:e.clientY, lastX:e.clientX, moved:false, sourceEl:e.currentTarget, ghost:null, pointerId:e.pointerId };
+  
+  dragState.intentTimeout = setTimeout(() => {
+     try{ dragState.sourceEl.setPointerCapture(e.pointerId); }catch(err){}
+  }, 80);
+
+  const onMove=(ev)=>{
+    if(!dragState) return;
+    const dx=ev.clientX-dragState.startX, dy=ev.clientY-dragState.startY;
+    if(!dragState.moved && Math.hypot(dx,dy)>15){
+      dragState.moved=true;
+      clearTimeout(dragState.intentTimeout);
+      startGhost(dragState,ev);
+      highlightDropTargets(dragState);
+    }
+    if(dragState.moved){ updateGhostPos(dragState,ev); updateHoverHighlight(dragState,ev); }
+  };
+  
+  const onUp=async (ev)=>{
+    document.removeEventListener('pointermove',onMove); document.removeEventListener('pointerup',onUp); document.removeEventListener('pointercancel',onUp);
+    if(!dragState) return;
+    clearTimeout(dragState.intentTimeout);
+    try{ dragState.sourceEl.releasePointerCapture(dragState.pointerId); }catch(err){}
+    
+    if(dragState.moved) await finishDrag(dragState,ev);
+    else if(zone === 'hand' && card.type === 'creature') await placeCard(card); 
+    
+    clearDropHighlights(); dragState=null;
+  };
+  
+  dragState._onMove=onMove; dragState._onUp=onUp;
+  document.addEventListener('pointermove',onMove); document.addEventListener('pointerup',onUp); document.addEventListener('pointercancel',onUp);
+}
+
+function startGhost(ds,ev){
+  const clone=ds.sourceEl.cloneNode(true);
+  clone.classList.add('drag-ghost');
+  clone.style.margin='0'; clone.style.opacity='0.95';
+  const btn=clone.querySelector('.card-info-bar'); if(btn) btn.remove();
+  document.body.appendChild(clone);
+  ds.ghost=clone; ds.sourceEl.style.opacity='0.25';
+  updateGhostPos(ds,ev);
+}
+
+function updateGhostPos(ds,ev){
+  if(!ds.ghost) return;
+  const deltaX = ev.clientX - ds.lastX; ds.lastX = ev.clientX;
+  const tilt = Math.max(-15, Math.min(15, deltaX * 1.5)); 
+  ds.ghost.style.transform=`translate(${ev.clientX}px, ${ev.clientY}px) translate(-50%,-50%) rotate(${tilt}deg) scale(1.1)`;
+}
+
+function highlightDropTargets(ds){
+  if(ds.zone==='hand' && ds.card.type==='creature'){ document.querySelectorAll(`#me-local .slot`).forEach(s=>s.classList.add('drop-target')); } 
+  else if(ds.zone==='slot' && ds.card.type==='creature'){ document.getElementById(`me-arena`).classList.add('drop-target'); } 
+  else if(ds.zone==='hand' && ds.card.type==='spell'){ document.getElementById(`opp-half`).classList.add('drop-zone-active'); }
+}
+
+function clearDropHighlights(){
+  document.querySelectorAll('.drop-target').forEach(s=>s.classList.remove('drop-target','drop-target-hover'));
+  document.querySelectorAll('.drop-zone-active').forEach(s=>s.classList.remove('drop-zone-active'));
+}
+
+function updateHoverHighlight(ds,ev){
+  document.querySelectorAll('.drop-target-hover').forEach(s=>s.classList.remove('drop-target-hover'));
+  if(ds.ghost) ds.ghost.style.display='none';
+  const el=document.elementFromPoint(ev.clientX,ev.clientY);
+  if(ds.ghost) ds.ghost.style.display='';
+  if(!el) return;
+  const slot=el.closest('.slot'); if(slot && slot.classList.contains('drop-target')) slot.classList.add('drop-target-hover');
+  const arenaSlot=el.closest('.arena-slot'); if(arenaSlot && arenaSlot.classList.contains('drop-target')) arenaSlot.classList.add('drop-target-hover');
+}
+
+async function finishDrag(ds,ev){
+  if(ds.sourceEl) ds.sourceEl.style.opacity='';
+  if(ds.ghost) ds.ghost.style.display='none';
+  const el=document.elementFromPoint(ev.clientX,ev.clientY);
+  if(ds.ghost) ds.ghost.remove();
+
+  let dropped=false;
+  if(el){
+    if(ds.zone==='hand' && ds.card.type==='creature'){
+      const slot=el.closest('.slot');
+      if(slot && Number(slot.dataset.player)===ds.player) dropped = await placeCard(ds.card, parseInt(slot.dataset.slotIdx));
+    } else if(ds.zone==='slot' && ds.card.type==='creature'){
+      const arenaSlot=el.closest('.arena-slot');
+      if(arenaSlot && arenaSlot.id===`me-arena`) dropped = await sendToArena(ds.card);
+    } else if(ds.zone==='hand' && ds.card.type==='spell'){
+      const half=el.closest(`#opp-half`);
+      if(half){ await playSpell(ds.card); dropped=true; }
+    }
+  }
+  if(!dropped) SFX.tap();
+}
+
+function wireCardInfo(cardEl,card,player){
+  const infoBtn=cardEl.querySelector('.card-info-bar');
+  if(infoBtn) infoBtn.addEventListener('pointerdown',(e)=>{ e.stopPropagation(); e.preventDefault(); SFX.tap(); showCardInspect(card,player); });
+}
+
+function wireCard(cardEl,card,player,zone){
+  cardEl._player=player;
+  wireCardInfo(cardEl,card,player);
+  cardEl.addEventListener('pointerenter', () => { if(!card.faceDown) SFX.hover(); });
+  if(zone) cardEl.addEventListener('pointerdown',(e)=>onCardPointerDown(e,card,player,zone));
+}
+
+function showCardInspect(card,player){
+  const ov=document.createElement('div');
+  ov.className='inspect-overlay-fixed';
+  const inner=document.createElement('div');
+  inner.style.cssText=`display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px;`;
+  const rarityHTML = card.type==='creature' ? `<div class="inspect-rarity-label ${card.rarity}">${card.rarity}</div>` : '';
+  const statsHTML = card.type==='creature' ? `<div class="inspect-stats-row"><div class="inspect-stat"><span class="val">⚔${card.atk}</span><span class="lbl">ATK</span></div><div class="inspect-stat"><span class="val">🛡${card.def}</span><span class="lbl">DEF</span></div><div class="inspect-stat"><span class="val">⚡${card.spd}</span><span class="lbl">SPD</span></div><div class="inspect-stat"><span class="val">${card.tributeCost}</span><span class="lbl">Tribute</span></div></div>` : '';
+
+  let loreParts = [];
+  if(card.type==='spell') loreParts.push(`${card.spellEffect.text}`);
+  if(card.passive) loreParts.push(`Aura/Passief: ${card.passive.text}`);
+  if(card.counterfeit) loreParts.push('⚠️ Deze kopie is NEP — de statistieken kloppen niet.');
+  if(card.isRelic) loreParts.push('Dit is een instabiel Reliek — krachtig, maar met een prijs.');
+  
+  inner.innerHTML=`<div class="inspect-card-big">${renderCardHTML(card,{showInfo:false})}</div>${rarityHTML}${statsHTML}<p class="inspect-lore">${loreParts.join(' ')}</p><button class="btn sm gold inspect-close">SLUITEN</button>`;
+  ov.appendChild(inner); mountToApp(ov);
+  const close=()=>ov.remove();
+  inner.querySelector('.inspect-close').addEventListener('pointerdown',(e)=>{ e.stopPropagation(); SFX.tap(); close(); });
+  ov.addEventListener('pointerdown',(e)=>{ if(e.target===ov) close(); });
+}
+
+// INIT
+document.addEventListener('DOMContentLoaded',()=>{
+  document.body.addEventListener('touchmove',(e)=>e.preventDefault(),{passive:false});
+  initFirebase();
+});
+
+</script>
+</body>
+</html>
+
+
