@@ -557,35 +557,35 @@ let G = {
 const MAX_TURNS = 15;
 
 async function initFirebase() {
-  // 1. PLAK HIER JOUW EIGEN FIREBASE CONFIGURATIE:
-  const firebaseConfig = {
-    apiKey: "AIzaSyCeBtFUTnrqXCXBjt-AFpOYaliRzNhiVRo",
-    authDomain: "creature-clash-12a46.firebaseapp.com",
-    projectId: "creature-clash-12a46”,
-    storageBucket: "creature-clash-12a46.appspot.com",
-    messagingSenderId: "822881909512”,
-    appId: "1:822881909512:web:3c5f172d99894cca098abd”,
-  };
-
-  const app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-  
-  // 2. AANGEPAST: We maken een simpele, schone map genaamd 'rooms' in jouw database
-  roomsRef = collection(db, 'rooms');
-
   try {
-      // 3. AANGEPAST: We loggen puur in via de anonieme login die je hebt aangezet
+      const firebaseConfig = {
+        apiKey: "AIzaSyCeBtFUTnrqXCXBjt-AFpOYaliRzNhiVRo",
+        authDomain: "creature-clash-12a46.firebaseapp.com",
+        projectId: "creature-clash-12a46",
+        storageBucket: "creature-clash-12a46.appspot.com",
+        messagingSenderId: "822881909512",
+        appId: "1:822881909512:web:3c5f172d99894cca098abd"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+      roomsRef = collection(db, 'rooms');
+
       await signInAnonymously(auth);
-      
+
       document.getElementById('lobbyStatus').innerText = "Verbonden! Klaar om te spelen.";
       document.getElementById('btnHost').disabled = false;
       document.getElementById('btnJoin').disabled = false;
+
   } catch (e) {
-      document.getElementById('lobbyStatus').innerText = "Fout bij inloggen: " + e.message;
-      console.error(e);
+      document.getElementById('lobbyStatus').innerText = "Systeemfout: " + e.message;
+      console.error("Gedetailleerde Firebase Fout:", e);
   }
 }
+
+  
+
 
 
 // ═══════════════════════════════════════
