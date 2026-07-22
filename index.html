@@ -11,7 +11,7 @@
   --bg:#0f0e1a;--panel:#f5f0e1;--black:#111;--white:#fff;
   --red:#e63946;--blue:#457b9d;--gold:#f4a261;--green:#2a9d8f;--purple:#7b2d8d;
   --hp-red:#d62828;--hp-green:#588157;
-  --card-w:105px;--card-h:168px;
+  --card-w:118px;--card-h:189px;
   --comic-shadow:3px 3px 0 #111;
 }
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;touch-action:none;}
@@ -51,6 +51,11 @@ input[type="text"]:focus { border-color: var(--white); }
 .player-half.me { justify-content: flex-end; border-top: 2px solid rgba(255,255,255,0.1); }
 
 .player-hud{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;background:rgba(0,0,0,.7);color:var(--white);flex-shrink:0;height:42px;border-bottom:3px solid rgba(255,255,255,.15);transition:box-shadow .2s,background .2s;position:relative;z-index:60;}
+
+/* ─── FASE-BALK (permanent zichtbaar, i.t.t. de tijdelijke phase-banner) ─── */
+.phase-bar{flex-shrink:0;width:100%;background:rgba(10,10,30,.94);border-bottom:3px solid var(--gold);padding:4px 10px;text-align:center;}
+.phase-bar .pb-title{color:var(--gold);font-weight:900;font-size:.8em;text-transform:uppercase;letter-spacing:1px;text-shadow:1px 1px 0 #000;}
+.phase-bar .pb-sub{color:#ddd;font-size:.7em;margin-top:1px;line-height:1.3;}
 .player-half.me .player-hud { border-bottom:none; border-top:3px solid rgba(255,255,255,.15); }
 
 .player-hud.active-turn{box-shadow:inset 0 0 0 2px var(--gold);background:rgba(244,162,97,.14);}
@@ -64,33 +69,44 @@ input[type="text"]:focus { border-color: var(--white); }
 .hp-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.72em;font-weight:700;color:#fff;text-shadow:1px 1px 1px #000;}
 .hud-btns{display:flex;gap:5px;}
 
-/* ─── ZONES ─── */
-.local-zone{display:flex;gap:5px;justify-content:center;align-items:center;padding:4px 6px;flex-shrink:0;min-height:calc(var(--card-h) + 12px);background:rgba(255,255,255,.03);}
-.player-half.opp .local-zone { border-bottom:2px solid rgba(255,255,255,.08); }
-.player-half.me .local-zone { border-top:2px solid rgba(255,255,255,.08); }
+/* ─── LANES (voorhoede / achterhoede) ─── */
+.lane-board{display:flex;flex-direction:column;flex-shrink:0;gap:4px;padding:4px 6px;background:rgba(255,255,255,.03);position:relative;z-index:55;}
+.player-half.opp .lane-board { border-bottom:2px solid rgba(255,255,255,.08); }
+.player-half.me .lane-board { border-top:2px solid rgba(255,255,255,.08); }
 
-.slot{width:var(--card-w);height:var(--card-h);border:2px dashed rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;transition:border-color .2s,background .2s;}
-.slot.drop-target{border-color:rgba(244,162,97,.5);}
-.slot.drop-target-hover{border-color:var(--gold);border-style:solid;background:rgba(244,162,97,.15);}
-.slot .card{position:absolute;inset:0;margin:auto;}
-.slot-idx{position:absolute;bottom:2px;right:4px;font-size:.5em;color:rgba(255,255,255,.2);font-weight:700;}
+.lane-row{display:flex;gap:6px;justify-content:center;}
+.lane-row-label{text-align:center;font-size:.6em;color:rgba(255,255,255,.4);font-weight:700;letter-spacing:.5px;}
+.lane-slot{width:var(--card-w);height:var(--card-h);border:2px dashed rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;transition:border-color .2s,background .2s;}
+.lane-slot.front{border-color:rgba(230,57,70,.3);}
+.lane-slot.back{border-color:rgba(69,123,157,.3);}
+.lane-slot.drop-target{border-color:rgba(244,162,97,.5);}
+.lane-slot.drop-target-hover{border-color:var(--gold);border-style:solid;background:rgba(244,162,97,.15);}
+.lane-slot .card{position:absolute;inset:0;margin:auto;}
+.lane-slot-label{position:absolute;top:-13px;left:0;width:100%;text-align:center;font-size:.5em;color:rgba(255,255,255,.3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;pointer-events:none;}
 
-.hand-zone{display:flex;gap:5px;justify-content:center;align-items:center;padding:4px 6px;flex:1;overflow-x:auto;overflow-y:hidden;min-height:60px;position:relative;}
+/* Grijs de irrelevante stat uit: voorhoede = alleen ATK telt, achterhoede = alleen DEF telt */
+.card.row-front .def-badge{opacity:.3;filter:grayscale(1);}
+.card.row-back .atk-badge{opacity:.3;filter:grayscale(1);}
+
+.hand-zone{display:flex;gap:5px;justify-content:center;align-items:center;padding:4px 6px;flex:1;overflow-x:auto;overflow-y:hidden;min-height:60px;position:relative;z-index:55;}
 /* Opponent hand: visueel iets gedempt en niet-interactief (kaarten liggen sowieso al face-down) */
 .hand-zone.hidden-hand{opacity:.92;}
 .hand-zone.hidden-hand .card{cursor:default;}
-/* Highlight van de tegenstander-helft als geldig doelwit tijdens het slepen van een spreuk */
-.player-half.drop-zone-active{box-shadow:inset 0 0 0 3px var(--gold);background:rgba(244,162,97,.07);}
 
-/* ─── ARENA ─── */
-.arena{position:absolute;left:0;width:100%;top:50%;transform:translateY(-50%);height:170px;background:linear-gradient(180deg,rgba(123,45,141,.25),rgba(10,10,30,.6),rgba(230,57,70,.25));border-top:3px solid rgba(255,255,255,.15);border-bottom:3px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;gap:20px;z-index:50;pointer-events:none;}
-.arena-slot{width:calc(var(--card-w) + 8px);height:calc(var(--card-h) + 8px);border:2px dashed rgba(255,255,255,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;position:relative;transition:border-color .2s,background .2s;pointer-events:auto;}
-.arena-slot.drop-target{border-color:rgba(244,162,97,.6);}
-.arena-slot.drop-target-hover{border-color:var(--gold);border-style:solid;background:rgba(244,162,97,.2);box-shadow:0 0 14px rgba(244,162,97,.5);}
-.arena-slot .label-top,.arena-slot .label-bot{position:absolute;font-size:.6em;color:rgba(255,255,255,.7);font-weight:700;text-shadow:1px 1px 0 #000;pointer-events:none;}
-.arena-slot .label-top{top:-16px;}
-.arena-slot .label-bot{bottom:-16px;}
-.vs-badge{width:44px;height:44px;background:radial-gradient(circle,var(--gold),#c97a30);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1em;font-weight:900;color:#111;box-shadow:0 0 16px rgba(244,162,97,.4);flex-shrink:0;}
+/* ─── DIVIDER (puur decoratief, geen functionele slots meer) ─── */
+.lane-divider{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:3px 0;background:linear-gradient(90deg,rgba(123,45,141,.2),rgba(10,10,30,.5),rgba(230,57,70,.2));border-top:2px solid rgba(255,255,255,.15);border-bottom:2px solid rgba(255,255,255,.15);position:relative;z-index:56;}
+.vs-badge{width:38px;height:38px;background:radial-gradient(circle,var(--gold),#c97a30);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1em;font-weight:900;color:#111;box-shadow:0 0 16px rgba(244,162,97,.4);flex-shrink:0;}
+
+/* ─── CLASH-ANIMATIES (initiative-volgorde) ─── */
+@keyframes lungeAttack{0%{transform:translateY(0) scale(1);}40%{transform:translateY(var(--lunge-y,-10px)) scale(1.08);}100%{transform:translateY(0) scale(1);}}
+.anim-attack{animation:lungeAttack .5s ease-in-out;z-index:120;}
+@keyframes braceDefend{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}50%{transform:translateX(4px);}75%{transform:translateX(-2px);}}
+.anim-defend{animation:braceDefend .4s ease-in-out;}
+@keyframes castGlow{0%{filter:brightness(1);}50%{filter:brightness(1.6) drop-shadow(0 0 10px var(--gold));}100%{filter:brightness(1);}}
+.anim-cast{animation:castGlow .6s ease-in-out;z-index:120;}
+@keyframes trapReveal{0%{transform:scale(.7) rotate(-8deg);opacity:.4;}60%{transform:scale(1.12) rotate(4deg);opacity:1;}100%{transform:scale(1) rotate(0);opacity:1;}}
+.anim-trap-reveal{animation:trapReveal .5s ease-out;z-index:120;}
+.active-slot{box-shadow:0 0 0 3px var(--gold),0 0 16px rgba(244,162,97,.6);border-style:solid!important;}
 
 /* ─── CARDS ─── */
 .card{
@@ -98,7 +114,9 @@ input[type="text"]:focus { border-color: var(--white); }
   border-radius:8px;position:relative;cursor:pointer;flex-shrink:0;
   transition: transform .3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow .2s;
   perspective:600px;
+  font-size:26px; /* basis voor alle .Xem waarden binnenin de kaart — was ongewild 16px (browserstandaard), te klein om te lezen */
 }
+@media(max-width:600px){.card{font-size:21px;}}
 .card:active{transform:scale(1.05);z-index:99;}
 .card-inner{width:100%;height:100%;border-radius:8px;position:relative;transform-style:preserve-3d;transition:transform .45s;}
 .card.face-down .card-inner{transform:rotateY(180deg);}
@@ -113,8 +131,8 @@ input[type="text"]:focus { border-color: var(--white); }
 .card.rarity-legendary .card-front{border-color:var(--gold);background:linear-gradient(135deg,#f5f0e1,#fff8dc,#f5f0e1);box-shadow:0 0 14px rgba(244,162,97,.5);}
 @keyframes epicPulse{0%,100%{box-shadow:0 0 8px rgba(123,45,141,.4);}50%{box-shadow:0 0 16px rgba(123,45,141,.85);}}
 
-.card-header{display:flex;align-items:center;justify-content:space-between;padding:2px 4px;border-bottom:2px solid var(--black);height:20px;flex-shrink:0;}
-.tribute-badge{min-width:16px;height:16px;background:var(--gold);border:2px solid var(--black);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.55em;font-weight:900;color:#111;}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:2px 4px;border-bottom:2px solid var(--black);height:24px;flex-shrink:0;}
+.tribute-badge{min-width:19px;height:19px;background:var(--gold);border:2px solid var(--black);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.55em;font-weight:900;color:#111;}
 .card-title{flex:1;text-align:center;font-size:.5em;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:.3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 2px;}
 .spd-badge{background:#ffe066;border:2px solid var(--black);border-radius:4px;padding:0 3px;font-size:.55em;font-weight:900;color:#111;}
 
@@ -139,7 +157,7 @@ input[type="text"]:focus { border-color: var(--white); }
 }
 .card.rarity-legendary .card-art .emoji{font-size:3.15em;filter:drop-shadow(0 0 4px rgba(244,162,97,.85)) drop-shadow(1px 1px 0 rgba(0,0,0,.4));}
 
-.card-text{padding:3px 4px;font-size:.5em;line-height:1.35;color:#333;border-bottom:2px solid var(--black);min-height:30px;max-height:38px;overflow:hidden;background:rgba(255,255,255,.6);font-weight:500;}
+.card-text{padding:3px 4px;font-size:.5em;line-height:1.3;color:#333;border-bottom:2px solid var(--black);min-height:34px;max-height:44px;overflow:hidden;background:rgba(255,255,255,.6);font-weight:500;}
 
 .card-footer{display:flex;justify-content:space-between;padding:2px 4px;height:20px;align-items:center;flex-shrink:0;}
 .atk-badge{background:var(--red);color:#fff;border:2px solid var(--black);border-radius:4px;padding:0 5px;font-size:.6em;font-weight:900;transition:transform .15s;}
@@ -199,7 +217,7 @@ input[type="text"]:focus { border-color: var(--white); }
 
 /* ─── BATTLE LOG ─── */
 .battle-log{position:fixed;left:50%;transform:translateX(-50%);z-index:60;background:rgba(0,0,0,.8);border:2px solid rgba(244,162,97,.3);border-radius:8px;padding:6px 10px;max-width:360px;width:90%;text-align:center;pointer-events:none;max-height:80px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;}
-.battle-log.me { bottom: calc(50% + 90px); }
+.battle-log.me { bottom: calc(50% + 32px); }
 .log-entry{font-size:.7em;color:var(--white);opacity:1;transition:opacity .5s;line-height:1.3;}
 .log-entry.old{opacity:.45;}
 .log-entry.dmg{color:#ff6b6b;}
@@ -257,7 +275,7 @@ input[type="text"]:focus { border-color: var(--white); }
 .screen-flash{position:fixed;inset:0;z-index:850;pointer-events:none;}
 
 /* ─── RESPONSIVE ─── */
-@media(max-width:600px){:root{--card-w:85px;--card-h:135px;} .card-text{font-size:.45em;}}
+@media(max-width:600px){:root{--card-w:96px;--card-h:154px;} .card-text{font-size:.45em;}}
 </style>
 </head>
 <body>
@@ -268,7 +286,7 @@ input[type="text"]:focus { border-color: var(--white); }
 <div class="overlay" id="lobbyScreen">
   <h1>⚔️ Creature Clash ⚔️</h1>
   <h2>Multiplayer Editie</h2>
-  <p>Een online kaartenspel voor 2 spelers. Draft wezens, bluf en strijd in de Arena. Om te spelen op twee apparaten heb je een code nodig.</p>
+  <p>Een online kaartenspel voor 2 spelers. Draft wezens, bouw je voorhoede en achterhoede op, en laat de clash beslissen. Om te spelen op twee apparaten heb je een code nodig.</p>
   
   <div style="display:flex;flex-direction:column;gap:15px;margin-top:20px;width:100%;max-width:300px;">
      <button class="btn gold" onclick="window.hostGame()" id="btnHost" disabled>HOST SPEL (MAAK CODE)</button>
@@ -292,10 +310,11 @@ input[type="text"]:focus { border-color: var(--white); }
 
 <!-- GAME BOARD -->
 <div id="game">
+  <div class="phase-bar" id="phaseBar"></div>
   <!-- OPPONENT (Top) -->
   <div class="player-half opp" id="opp-half">
     <div class="hand-zone hidden-hand" id="opp-hand"></div>
-    <div class="local-zone" id="opp-local"></div>
+    <div class="lane-board" id="opp-lanes"></div>
     <div class="player-hud">
       <span class="name" id="opp-name">⚡ Tegenstander</span>
       <div class="hp-wrap">
@@ -308,16 +327,7 @@ input[type="text"]:focus { border-color: var(--white); }
     </div>
   </div>
 
-  <!-- Arena -->
-  <div class="arena" id="arena">
-    <div class="arena-slot" id="opp-arena">
-      <span class="label-top">TEGENSTANDER</span>
-    </div>
-    <div class="vs-badge">⚔️</div>
-    <div class="arena-slot" id="me-arena">
-      <span class="label-bot">JIJ</span>
-    </div>
-  </div>
+  <div class="lane-divider"><span class="vs-badge">⚔️</span></div>
 
   <div class="battle-log me" id="logMe"></div>
 
@@ -332,7 +342,7 @@ input[type="text"]:focus { border-color: var(--white); }
         <button class="btn xs blue" id="me-ready-btn" onclick="window.playerReady()">KLAAR</button>
       </div>
     </div>
-    <div class="local-zone" id="me-local"></div>
+    <div class="lane-board" id="me-lanes"></div>
     <div class="hand-zone" id="me-hand"></div>
   </div>
 </div>
@@ -441,13 +451,13 @@ const PASSIVES = [
   {text:'Regen: +1 DEF per beurt.',type:'regen',val:1},
   {text:'On Death: 3 damage aan tegenstander.',type:'ondeath_opp',val:3},
   {text:'On Play: Trek 1 kaart.',type:'onplay_draw',val:1},
-  {text:'On Arena: Gluren naar Arena kaart.',type:'onarena_peek',val:0},
+  {text:'Waakzaam: gluurt bij onthulling naar de kaart ertegenover.',type:'onarena_peek',val:0},
   {text:'Overlever: Heelt eigenaar 2 HP na winst.',type:'onsurvive_heal',val:2}
 ];
 
 const DEFENSIVE_PASSIVES = [
   {text:'Schild: Absorbeert de eerste klap.',type:'shield',val:0},
-  {text:'Versterkt: +3 DEF in de Arena.',type:'fort',val:3},
+  {text:'Versterkt: +3 DEF in de achterhoede.',type:'fort',val:3},
   {text:'On Death: 3 damage aan aanvaller.',type:'ondeath',val:3},
   {text:'Regen: +2 DEF per beurt.',type:'regen',val:2},
   {text:'Doorns: Aanvaller krijgt 2 damage.',type:'thorns',val:2}
@@ -460,14 +470,14 @@ const RELIC_PASSIVES = [
 ];
 
 const SPELLS = [
-  {name:'Gedachten Lezen',text:'Bekijk vijandelijke Arena kaart.',effect:'peek',icon:'👁️'},
-  {name:'Stats Wissel',text:'Wissel ATK en DEF van vijandelijke kaart.',effect:'statswap',icon:'🔄'},
-  {name:'Krachtstoot',text:'Jouw Arena kaart krijgt +4 ATK.',effect:'atkBoost',icon:'💥'},
-  {name:'IJzeren Muur',text:'Jouw Arena kaart krijgt +4 DEF.',effect:'defBoost',icon:'🛡️'},
-  {name:'Snelheid',text:'Jouw Arena kaart krijgt +4 SPD.',effect:'spdBoost',icon:'⚡'},
-  {name:'Sabotage',text:'Vijandelijke Arena kaart krijgt -3 ATK.',effect:'sabotage',icon:'🔧'},
+  {name:'Gedachten Lezen',text:'Onthult de vijandelijke voorhoede in dezelfde lane.',effect:'peek',icon:'👁️'},
+  {name:'Stats Wissel',text:'Wissel ATK en DEF van het doelwit.',effect:'statswap',icon:'🔄'},
+  {name:'Krachtstoot',text:'Voorhoede-buurman krijgt +4 ATK.',effect:'atkBoost',icon:'💥'},
+  {name:'IJzeren Muur',text:'Voorhoede-buurman krijgt +4 DEF.',effect:'defBoost',icon:'🛡️'},
+  {name:'Snelheid',text:'Voorhoede-buurman krijgt +4 SPD.',effect:'spdBoost',icon:'⚡'},
+  {name:'Sabotage',text:'Doelwit krijgt -3 ATK.',effect:'sabotage',icon:'🔧'},
   {name:'Heling',text:'Herstel 4 HP.',effect:'heal',icon:'💚'},
-  {name:'Verzwakken',text:'Vijandelijke Arena kaart krijgt -3 DEF.',effect:'weaken',icon:'💀'},
+  {name:'Verzwakken',text:'Doelwit krijgt -3 DEF.',effect:'weaken',icon:'💀'},
   {name:'Bliksem',text:'3 directe damage aan tegenstander.',effect:'bolt',icon:'⚡'},
   {name:'Inspecteer',text:'Onthul of vijandelijke kaart nep is.',effect:'inspect',icon:'🔍'}
 ];
@@ -508,7 +518,8 @@ function generateCreatureCard(){
 
 function generateSpellCard(){
   const spell=pick(SPELLS);
-  return { id:cardIdCounter++, type:'spell', name:spell.name, emoji:spell.icon, adjCss:'', atk:0,def:0,spd:0, tributeCost:0, rarity:'common', counterfeit:false, passive:null, spellEffect:spell, faceDown:false, shieldActive:false, owner:null, baseAtk:0,baseDef:0,baseSpd:0, baseDef_original:0, tier:'spell', turnsHeld:0, isRelic:false };
+  const spd=rng(2,7); // spreuken draaien nu mee in de SPD-volgorde i.p.v. altijd als laatste te gaan
+  return { id:cardIdCounter++, type:'spell', name:spell.name, emoji:spell.icon, adjCss:'', atk:0,def:0,spd, tributeCost:0, rarity:'common', counterfeit:false, passive:null, spellEffect:spell, faceDown:false, shieldActive:false, owner:null, baseAtk:0,baseDef:0,baseSpd:spd, baseDef_original:0, tier:'spell', turnsHeld:0, isRelic:false };
 }
 
 const RELIC_NAMES=['Voidwyrm','Chronofang','Omen Colossus','Starless Leviathan','Entropy Beast'];
@@ -551,7 +562,9 @@ let myPlayerId = 1; // 1 = Host, 2 = Joiner
 let oppPlayerId = 2;
 let unsubscribe = null;
 
-function freshPlayer(){ return {hp:35,maxHp:35,deck:[],hand:[],localSlots:[null,null,null,null],arenaCard:null,ready:false,dmgDealt:0,cardsPlayed:0,spellsCast:0,lastSeen:Date.now()}; }
+const LANE_COUNT = 3;
+function freshLanes(){ return Array.from({length:LANE_COUNT}, ()=>({front:null, back:null})); }
+function freshPlayer(){ return {hp:35,maxHp:35,deck:[],hand:[],lanes:freshLanes(),ready:false,dmgDealt:0,cardsPlayed:0,spellsCast:0,lastSeen:Date.now()}; }
 
 let G = {
   phase: 'lobby', turn: 1,
@@ -684,6 +697,20 @@ async function saveGameState() {
     catch(e) { console.error("Save error:", e); }
 }
 
+// Lichte heartbeat: werkt lastSeen bij zonder dat de speler iets hoeft te doen,
+// zodat "nadenken zonder actie" niet ten onrechte als offline wordt gezien.
+// Schrijft alleen het losse veld (geen volledige G), dus geen risico dat we
+// elkaars gelijktijdige wijzigingen overschrijven.
+function startHeartbeat(){
+  setInterval(async ()=>{
+    if(!roomCode || !myPlayerId) return;
+    try{
+      await updateDoc(doc(roomsRef, roomCode), { [`G.players.${myPlayerId}.lastSeen`]: Date.now() });
+      if(G.players && G.players[myPlayerId]) G.players[myPlayerId].lastSeen = Date.now();
+    } catch(e){ /* volgende hartslag probeert het opnieuw; geen actie nodig */ }
+  }, 8000);
+}
+
 // ═══════════════════════════════════════
 // SESSIE-HERSTEL (herstelbaarheid na herladen/verbindingsverlies)
 // ═══════════════════════════════════════
@@ -768,7 +795,9 @@ async function tryReconnect(){
 function renderAll() {
     if(G.phase === 'lobby' || G.phase === 'draft') return;
 
+    ensureLaneDOM();
     updateHP();
+    updatePhaseBar();
 
     // Badges / Status
     const meReady = G.players[myPlayerId].ready;
@@ -782,10 +811,8 @@ function renderAll() {
     applyAdjacencyBuffs();
     renderHand(myPlayerId, 'me-hand', false);
     renderHand(oppPlayerId, 'opp-hand', true); // Always hidden hand for opponent
-    renderSlots(myPlayerId, 'me-local');
-    renderSlots(oppPlayerId, 'opp-local');
-    renderArenaSlot(myPlayerId, 'me-arena');
-    renderArenaSlot(oppPlayerId, 'opp-arena');
+    renderLanes(myPlayerId, 'me-lanes');
+    renderLanes(oppPlayerId, 'opp-lanes');
     renderLogs();
 }
 
@@ -819,40 +846,53 @@ function renderHand(pid, containerId, isHidden) {
     reconcileCardList(handEl, G.players[pid].hand, pid, 'hand', isHidden);
 }
 
-function renderSlots(pid, containerId) {
-    const localEl=document.getElementById(containerId);
-    const slotEls=localEl.querySelectorAll('.slot');
-    slotEls.forEach((slotEl,i)=>{
-      const card=G.players[pid].localSlots[i];
-      const existingEl=slotEl.querySelector('.card');
-      if(!card){ if(existingEl) existingEl.remove(); return; }
-      if(existingEl && existingEl.dataset.cardId===String(card.id)){ updateCardEl(existingEl,card); return; }
+// ─── LANE-BORD DOM (dynamisch, gebaseerd op LANE_COUNT) ───
+const LANE_ROW_LABELS = { front:'VOORHOEDE (ATK)', back:'ACHTERHOEDE (DEF)' };
+function ensureLaneDOM(){
+  buildLaneDOM('opp-lanes', 'opp', ['back','front']); // achterhoede boven (verst van de divider), voorhoede onder
+  buildLaneDOM('me-lanes', 'me', ['front','back']);   // voorhoede boven (dichtst bij de divider), achterhoede onder
+}
+function buildLaneDOM(containerId, prefix, rowOrder){
+  const el = document.getElementById(containerId);
+  if(!el || el.dataset.built) return;
+  el.dataset.built = '1';
+  let html = '';
+  rowOrder.forEach(row=>{
+    html += `<div class="lane-row-label">${LANE_ROW_LABELS[row]}</div><div class="lane-row ${row}" data-row="${row}">`;
+    for(let i=0;i<LANE_COUNT;i++){
+      html += `<div class="lane-slot ${row}" id="${laneSlotDomId(prefix,i,row)}" data-lane="${i}" data-row="${row}"></div>`;
+    }
+    html += `</div>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderLanes(pid, containerId){
+  const boardEl = document.getElementById(containerId);
+  if(!boardEl) return;
+  const isMine = (containerId === 'me-lanes'); // eigen bord altijd open, tegenstander-bord volgt card.faceDown
+  ['front','back'].forEach(row=>{
+    for(let i=0;i<LANE_COUNT;i++){
+      const slotEl = boardEl.querySelector(`.lane-slot[data-row="${row}"][data-lane="${i}"]`);
+      if(!slotEl) continue;
+      const card = G.players[pid].lanes[i][row];
+      const existingEl = slotEl.querySelector('.card');
+      if(!card){ if(existingEl) existingEl.remove(); continue; }
+      const renderCard = isMine ? { ...card, faceDown:false } : card;
+      if(existingEl && existingEl.dataset.cardId===String(card.id)){ updateCardEl(existingEl,renderCard,{row}); continue; }
       if(existingEl) existingEl.remove();
       const div=document.createElement('div');
-      div.innerHTML=renderCardHTML(card);
+      div.innerHTML=renderCardHTML(renderCard,{row});
       const cardEl=div.firstElementChild;
-      wireCard(cardEl,card,pid,'slot');
+      wireCard(cardEl,card,pid,null); // eenmaal geplaatst niet meer versleepbaar
       slotEl.appendChild(cardEl);
-    });
+    }
+  });
 }
 
-function renderArenaSlot(pid, containerId) {
-    const arenaEl=document.getElementById(containerId);
-    const card=G.players[pid].arenaCard;
-    const existingEl=arenaEl.querySelector('.card');
-    if(!card){ if(existingEl) existingEl.remove(); return; }
-    if(existingEl && existingEl.dataset.cardId===String(card.id)){ updateCardEl(existingEl,card); return; }
-    if(existingEl) existingEl.remove();
-    const div=document.createElement('div');
-    div.innerHTML=renderCardHTML(card);
-    const cardEl=div.firstElementChild;
-    wireCard(cardEl,card,pid,null);
-    arenaEl.appendChild(cardEl);
-}
-
-function updateCardEl(el,card){
+function updateCardEl(el,card,opts={}){
   const div=document.createElement('div');
-  div.innerHTML=renderCardHTML(card);
+  div.innerHTML=renderCardHTML(card,opts);
   const fresh=div.firstElementChild;
   el.className=fresh.className;
   el.innerHTML=fresh.innerHTML;
@@ -875,10 +915,12 @@ function renderCardHTML(card, opts={}){
   if(isSpell) classes.push('spell-card');
   if(card.faceDown) classes.push('face-down');
   if(card.adjCss) classes.push(card.adjCss);
+  if(opts.row==='front') classes.push('row-front'); // ATK telt, DEF grijs
+  if(opts.row==='back') classes.push('row-back');   // DEF telt, ATK grijs
 
   const tributeBadge = !isSpell ? `<div class="tribute-badge">${card.tributeCost}</div>` : '<div></div>';
   const spdBadge = !isSpell ? `<div class="spd-badge">⚡${card.spd}</div>` : '<div></div>';
-  const rarityLabel = isSpell ? 'SPREUK' : (RARITY_LABELS[card.rarity] || card.rarity);
+  const rarityLabel = isSpell ? (opts.row==='back' ? 'VAL' : 'SPREUK') : (RARITY_LABELS[card.rarity] || card.rarity);
 
   let text = '';
   if(isSpell) text = card.spellEffect ? card.spellEffect.text : '';
@@ -945,6 +987,27 @@ function updateHP(){
   document.getElementById('opp-hpFill').className = 'hp-fill '+(pctOpp>50?'healthy':pctOpp>25?'hurt':'critical');
 }
 
+// Permanente fase-balk: blijft (i.t.t. showBanner) zichtbaar tot de fase wijzigt,
+// zodat een speler altijd kan zien in welke fase het spel zit en wat er van hem/haar wordt verwacht.
+function updatePhaseBar(){
+  const el = document.getElementById('phaseBar');
+  if(!el) return;
+  const meReady = G.players[myPlayerId] && G.players[myPlayerId].ready;
+  let title = '', sub = '';
+  if(G.phase === 'action'){
+    title = `BEURT ${G.turn} — FASE: ACTIE` + (G.suddenDeath ? ' ☠️ SUDDEN DEATH' : '');
+    sub = meReady
+      ? 'Klaar! Wachten tot de tegenstander ook klaar is...'
+      : 'Sleep kaarten naar voorhoede (ATK) of achterhoede (DEF) in een lane. Klik daarna op BEËINDIG BEURT.';
+  } else if(G.phase === 'resolution'){
+    title = 'FASE: CLASH';
+    sub = 'De voorhoedes vallen aan, op volgorde van snelheid — even geduld.';
+  } else if(G.phase === 'gameover'){
+    title = 'SPEL AFGELOPEN';
+  }
+  el.innerHTML = title ? `<div class="pb-title">${title}</div>${sub?`<div class="pb-sub">${sub}</div>`:''}` : '';
+}
+
 function mountToApp(el){
   document.getElementById('appRoot').appendChild(el);
 }
@@ -967,15 +1030,6 @@ function showDmgFloat(el, amount){
   f.textContent = `-${amount}`;
   el.appendChild(f);
   setTimeout(()=>f.remove(), 850);
-}
-
-function pulseStat(player, className){
-  const arenaId = player === myPlayerId ? 'me-arena' : 'opp-arena';
-  const el = document.querySelector(`#${arenaId} .${className}`);
-  if(!el) return;
-  el.classList.remove('stat-pulse'); void el.offsetWidth;
-  el.classList.add('stat-pulse');
-  setTimeout(()=>el.classList.remove('stat-pulse'), 500);
 }
 
 function shakeHP(player){
@@ -1005,65 +1059,70 @@ function spawnParticles(elId, color){
 // ═══════════════════════════════════════
 // BEURT-EFFECTEN (Aura, Regen, Vervloekt, Reliek)
 // ═══════════════════════════════════════
-// Herberekent Aura-passieven (buren +1 ATK/DEF) telkens vanaf de basiswaarden,
-// zodat dit veilig bij elke render opnieuw mag draaien zonder te stapelen.
+function laneRowCards(p, row){ return G.players[p].lanes.map(l=>l[row]); }
+function allLaneOccupants(p){
+  const out=[];
+  G.players[p].lanes.forEach((lane,i)=>{
+    if(lane.front) out.push({card:lane.front, laneIdx:i, row:'front'});
+    if(lane.back) out.push({card:lane.back, laneIdx:i, row:'back'});
+  });
+  return out;
+}
+
+// Aura-passieven (buren +1 ATK/DEF) buffen nu de NAASTGELEGEN LANE in dezelfde rij
+// (voorhoede buft voorhoede-buren, achterhoede buft achterhoede-buren). Herberekent
+// telkens vanaf de basiswaarden, dus veilig om bij elke render opnieuw te draaien.
 function applyAdjacencyBuffs(){
   for(let p=1;p<=2;p++){
-    const slots = G.players[p].localSlots;
-    slots.forEach(c=>{ if(c){ c.atk=c.baseAtk; c.def=c.baseDef; } });
-    slots.forEach((c,i)=>{
-      if(!c || !c.passive) return;
-      if(c.passive.type!=='adj_atk' && c.passive.type!=='adj_def') return;
-      [i-1,i+1].forEach(j=>{
-        const n = slots[j];
-        if(!n) return;
-        if(c.passive.type==='adj_atk') n.atk += c.passive.val;
-        else n.def += c.passive.val;
+    ['front','back'].forEach(row=>{
+      const cards = laneRowCards(p,row);
+      cards.forEach(c=>{ if(c && c.type==='creature'){ c.atk=c.baseAtk; c.def=c.baseDef; } });
+      cards.forEach((c,i)=>{
+        if(!c || c.type!=='creature' || !c.passive) return;
+        if(c.passive.type!=='adj_atk' && c.passive.type!=='adj_def') return;
+        [i-1,i+1].forEach(j=>{
+          const n=cards[j];
+          if(!n || n.type!=='creature') return;
+          if(c.passive.type==='adj_atk') n.atk+=c.passive.val; else n.def+=c.passive.val;
+        });
       });
     });
   }
 }
 
 // Regen-passief: DEF groeit permanent elke beurt (schrijft naar baseDef zodat
-// het niet verloren gaat bij de reset-naar-basis na een Arena-clash).
+// het niet verloren gaat bij de reset-naar-basis na een clash).
 function applyRegen(){
   for(let p=1;p<=2;p++){
-    G.players[p].localSlots.forEach(c=>{
-      if(c && c.passive && c.passive.type==='regen'){
-        c.baseDef += c.passive.val; c.def = c.baseDef;
-      }
+    allLaneOccupants(p).forEach(({card})=>{
+      if(card.passive && card.passive.type==='regen'){ card.baseDef+=card.passive.val; card.def=card.baseDef; }
     });
   }
 }
 
 // "Vervloekte" wezens (adj-cursed) hadden geen enkel mechanisch effect in de
 // databronnen — dit voegt het ontbrekende nadeel toe dat bij de naam past:
-// -1 ATK per beurt terwijl het wezen in de lokale zone staat.
+// -1 ATK per beurt terwijl het wezen op het bord staat.
 function applyCursedDecay(){
   for(let p=1;p<=2;p++){
-    G.players[p].localSlots.forEach(c=>{
-      if(c && c.adjCss==='adj-cursed'){
-        c.baseAtk = Math.max(0, c.baseAtk-1); c.atk = c.baseAtk;
-      }
+    allLaneOccupants(p).forEach(({card})=>{
+      if(card.adjCss==='adj-cursed'){ card.baseAtk=Math.max(0,card.baseAtk-1); card.atk=card.baseAtk; }
     });
   }
 }
 
-// Reliek-instabiliteit: eigenaar verliest HP zolang het Reliek in de lokale zone staat.
+// Reliek-instabiliteit: eigenaar verliest HP zolang het Reliek op het bord staat.
 function applyRelicDrain(){
   for(let p=1;p<=2;p++){
-    G.players[p].localSlots.forEach(c=>{
-      if(c && c.passive && c.passive.type==='relic_drain'){
-        G.players[p].hp -= c.passive.val;
-      }
+    allLaneOccupants(p).forEach(({card})=>{
+      if(card.passive && card.passive.type==='relic_drain'){ G.players[p].hp-=card.passive.val; }
     });
   }
 }
 
-// Synergie-check bij het begin van een Arena-clash: zelfde klasse (tier) of
-// zelfde adjectief geeft een sfeer-bonus (geluid + banner), puur cosmetisch —
-// er stond geen numerieke intentie in de rest van de code, dus dit tast de
-// balans niet aan.
+// Synergie-check bij een directe voorhoede-tegen-voorhoede duel: zelfde klasse
+// (tier) of zelfde adjectief geeft een sfeer-bonus (geluid + banner), puur
+// cosmetisch — tast de balans niet aan.
 function applySynergy(first, second, firstP, secondP){
   if(!first || !second) return;
   const sameTier = first.tier===second.tier && first.tier!=='spell';
@@ -1104,6 +1163,7 @@ function renderDraftPicks() {
     let html=`<div class="draft-shell">
       <h2>Draft Jouw Deck</h2>
       <div class="draft-info">Kaarten: ${totalCards}/14 — Kies een pakket.</div>
+      <div class="draft-info" style="font-size:.75em;color:#999;margin-top:-4px;">Elke lane heeft een VOORHOEDE (alleen ATK telt — aanvallers) en ACHTERHOEDE (alleen DEF telt — verdedigt/blokkeert, valt nooit zelf aan). Spreuken in de voorhoede zijn actieve spreuken; in de achterhoede liggen ze verborgen als een VAL die afgaat zodra een aanval je voorhoede doorbreekt. Offer een geplaatste kaart om plek te maken voor een duurdere.</div>
       <div class="draft-deck-info">Huidig Deck: ${creatures} wezens, ${spells} spreuken</div>
       <div class="pkg-scroll"><div class="pkg-row">`;
 
@@ -1201,101 +1261,117 @@ async function applyLocalTurnEffects() {
 }
 
 // LOCAL ACTIONS (Triggered by Drag & Drop)
-async function placeCard(card, targetSlot) {
+function laneSlotDomId(prefix, laneIdx, row){ return `${prefix}-lane-${laneIdx}-${row}`; }
+
+async function placeCard(card, laneIdx, row) {
     const pl = G.players[myPlayerId];
-    if(targetSlot===null || targetSlot===undefined){
-      targetSlot=pl.localSlots.indexOf(null);
-      if(targetSlot===-1){
-          if(card.tributeCost>0){ showTributeChoice(card); return true; } 
-          else { addLog('Geen lege slots!','info'); return false; }
+    if(laneIdx===null || laneIdx===undefined || !row){
+      // eenvoudige tik-plaatsing (geen sleep): eerste lege voorhoede-plek, anders eerste lege achterhoede-plek
+      let found=null;
+      for(const r of ['front','back']){
+        const idx = pl.lanes.findIndex(l=>!l[r]);
+        if(idx!==-1){ found={laneIdx:idx,row:r}; break; }
+      }
+      if(!found){
+        if(card.tributeCost>0){ showTributeChoice(card); return true; }
+        addLog('Geen lege plek op je bord!','info'); return false;
+      }
+      laneIdx=found.laneIdx; row=found.row;
+    }
+
+    const occupant = pl.lanes[laneIdx][row];
+    if(occupant){
+      if(card.tributeCost<1){ addLog('Niet genoeg tribute voor offer!','info'); return false; }
+      pl.lanes[laneIdx][row]=null;
+      if(card.tributeCost>=2){
+        const others = allLaneOccupants(myPlayerId).filter(o=>!(o.laneIdx===laneIdx && o.row===row));
+        const need = Math.min(card.tributeCost-1, others.length);
+        for(let k=0;k<need;k++){ pl.lanes[others[k].laneIdx][others[k].row]=null; }
       }
     }
 
-    const occupant=pl.localSlots[targetSlot];
-    if(occupant){
-      if(card.tributeCost<1){ addLog('Niet genoeg tribute voor offer!','info'); return false; }
-      pl.localSlots[targetSlot]=null;
-      if(card.tributeCost>=2){
-        const others=pl.localSlots.map((c,i)=>({c,i})).filter(o=>o.c && o.i!==targetSlot);
-        const need=Math.min(card.tributeCost-1,others.length);
-        for(let k=0;k<need;k++){ pl.localSlots[others[k].i]=null; }
-      }
-    }
-    
     pl.hand = pl.hand.filter(c => c.id !== card.id);
     card.faceDown = true;
-    pl.localSlots[targetSlot] = card;
+    pl.lanes[laneIdx][row] = card;
     pl.cardsPlayed++;
     SFX.place();
     if(card.passive && card.passive.type==='onplay_draw') drawCard(myPlayerId);
-    
+    if(card.type==='creature'){
+      const domId = laneSlotDomId('me', laneIdx, row);
+      if(card.rarity==='epic') spawnParticles(domId,'#7b2d8d');
+      if(card.rarity==='legendary') spawnParticles(domId,'#f4a261');
+    }
+
+    renderAll(); // direct zichtbaar voor de speler zelf, sync naar tegenstander gebeurt op de achtergrond
     await saveGameState();
     return true;
 }
 
 function showTributeChoice(card){
   if(G.confirmEl){ G.confirmEl.remove(); G.confirmEl=null; }
-  const pl = G.players[myPlayerId];
-  const occupied = pl.localSlots.map((c,i)=>({c,i})).filter(o=>o.c);
-  if(occupied.length===0) return; 
+  const occupied = allLaneOccupants(myPlayerId);
+  if(occupied.length===0) return;
 
   const m=document.createElement('div');
   m.className=`confirm-modal`;
   let btnsHtml = '';
   occupied.forEach(o=>{
-    const c=o.c, stats = c.type==='creature' ? `⚔${c.baseAtk} 🛡${c.baseDef} ⚡${c.baseSpd}` : c.name;
-    btnsHtml += `<button class="btn xs" data-slot="${o.i}" style="background:#555;width:100%;text-align:left;padding:8px;font-size:.75em;">Slot ${o.i+1}: ${c.name} (${stats})</button>`;
+    const c=o.card, rowLabel = o.row==='front' ? 'Voorhoede' : 'Achterhoede';
+    const stats = c.type==='creature' ? `⚔${c.baseAtk} 🛡${c.baseDef} ⚡${c.baseSpd}` : c.name;
+    btnsHtml += `<button class="btn xs" data-lane="${o.laneIdx}" data-row="${o.row}" style="background:#555;width:100%;text-align:left;padding:8px;font-size:.75em;">Lane ${o.laneIdx+1} · ${rowLabel}: ${c.name} (${stats})</button>`;
   });
-  m.innerHTML = `<h3>Welk wezen offeren?</h3><div class="confirm-btns" style="flex-direction:column;gap:5px;width:100%;">${btnsHtml}<button class="btn xs" id="tributeCancel" style="background:#333;color:#aaa;">Annuleren</button></div>`;
+  m.innerHTML = `<h3>Welke kaart offeren?</h3><div class="confirm-btns" style="flex-direction:column;gap:5px;width:100%;">${btnsHtml}<button class="btn xs" id="tributeCancel" style="background:#333;color:#aaa;">Annuleren</button></div>`;
   mountToApp(m);
   G.confirmEl=m;
-  m.querySelectorAll('button[data-slot]').forEach(btn=>{
+  m.querySelectorAll('button[data-lane]').forEach(btn=>{
     btn.addEventListener('pointerdown', async (e)=>{
       e.stopPropagation(); SFX.place();
       if(G.confirmEl){ G.confirmEl.remove(); G.confirmEl=null; }
-      await placeCard(card, parseInt(btn.dataset.slot));
+      await placeCard(card, parseInt(btn.dataset.lane), btn.dataset.row);
     });
   });
   m.querySelector('#tributeCancel').addEventListener('pointerdown',(e)=>{ e.stopPropagation(); SFX.tap(); if(G.confirmEl){ G.confirmEl.remove(); G.confirmEl=null; } });
 }
 
-async function sendToArena(card){
-  const pl=G.players[myPlayerId];
-  if(pl.arenaCard){ addLog('Je hebt al een wezen in de Arena!','info'); return false; }
-  const idx=pl.localSlots.findIndex(c=>c&&c.id===card.id);
-  if(idx===-1) return false;
-  pl.localSlots[idx]=null;
-  card.faceDown=true;
-  pl.arenaCard=card;
-  SFX.place();
-  if(card.rarity==='epic') spawnParticles(`me-arena`,'#7b2d8d');
-  if(card.rarity==='legendary') spawnParticles(`me-arena`,'#f4a261');
-  await saveGameState();
-  return true;
+// Buft de voorhoede-kaart in een naastgelegen lane (eigen kant) — gebruikt door
+// zelf-buff-spreuken, want de spreukkaart zelf staat op de plek waar voorheen
+// het te buffen wezen stond.
+function neighborFrontCreature(p, laneIdx){
+  const lanes = G.players[p].lanes;
+  if(lanes[laneIdx-1] && lanes[laneIdx-1].front && lanes[laneIdx-1].front.type==='creature') return lanes[laneIdx-1].front;
+  if(lanes[laneIdx+1] && lanes[laneIdx+1].front && lanes[laneIdx+1].front.type==='creature') return lanes[laneIdx+1].front;
+  return null;
 }
 
-async function playSpell(card){
-  const pl=G.players[myPlayerId];
-  const oppTarget = G.players[oppPlayerId].arenaCard;
-  const myTarget = pl.arenaCard;
-  const effect=card.spellEffect.effect;
+// Past het effect van een spreuk/val toe. mode 'cast' = voorhoede-spreuk op zijn
+// beurt in de SPD-volgorde (doelwit = vijandelijke voorhoede in dezelfde lane).
+// mode 'trap' = achterhoede-val die afgaat op de binnendringende aanvaller.
+function applySpellEffect(card, ownerP, opponentP, ctx){
+  const effect = card.spellEffect.effect;
+  const isTrap = ctx.mode === 'trap';
+  const target = isTrap ? ctx.attackerCard : (G.players[opponentP].lanes[ctx.laneIdx] ? G.players[opponentP].lanes[ctx.laneIdx].front : null);
   SFX.spell();
 
   switch(effect){
-    case 'peek': if(oppTarget){ oppTarget.faceDown=false; renderAll(); setTimeout(()=>{ if(G.players[oppPlayerId].arenaCard) G.players[oppPlayerId].arenaCard.faceDown=true; renderAll(); },3000); } break;
-    case 'statswap': if(oppTarget){ const tmp=oppTarget.atk; oppTarget.atk=oppTarget.def; oppTarget.def=tmp; pulseStat(oppPlayerId,'atk-badge'); pulseStat(oppPlayerId,'def-badge'); } break;
-    case 'atkBoost': if(myTarget && !myTarget.isRelic){ myTarget.atk+=4; pulseStat(myPlayerId,'atk-badge'); } break;
-    case 'defBoost': if(myTarget && !myTarget.isRelic){ myTarget.def+=4; pulseStat(myPlayerId,'def-badge'); } break;
-    case 'spdBoost': if(myTarget && !myTarget.isRelic){ myTarget.spd+=4; } break;
-    case 'sabotage': if(oppTarget){ oppTarget.atk=Math.max(0,oppTarget.atk-3); pulseStat(oppPlayerId,'atk-badge'); } break;
-    case 'heal': pl.hp=Math.min(pl.maxHp,pl.hp+4); SFX.heal(); updateHP(); break;
-    case 'weaken': if(oppTarget){ oppTarget.def=Math.max(0,oppTarget.def-3); pulseStat(oppPlayerId,'def-badge'); } break;
-    case 'bolt': G.players[oppPlayerId].hp-=3; SFX.hit(); screenFlash('#ff4757'); G.players[myPlayerId].dmgDealt+=3; updateHP(); showDmgFloat(document.getElementById(`opp-hpBar`),3); break;
-    case 'meteor': G.players[oppPlayerId].hp-=5; SFX.hit(); screenFlash('#ff4757',300); G.players[myPlayerId].dmgDealt+=5; updateHP(); showDmgFloat(document.getElementById(`opp-hpBar`),5); break;
+    case 'peek': if(!isTrap && target){ target.faceDown=false; } break;
+    case 'statswap': if(target && target.type==='creature'){ const t=target.atk; target.atk=target.def; target.def=t; } break;
+    case 'atkBoost': { const n=neighborFrontCreature(ownerP, ctx.laneIdx); if(n){ n.atk+=4; } } break;
+    case 'defBoost': { const n=neighborFrontCreature(ownerP, ctx.laneIdx); if(n){ n.def+=4; } } break;
+    case 'spdBoost': { const n=neighborFrontCreature(ownerP, ctx.laneIdx); if(n){ n.spd+=4; } } break;
+    case 'sabotage': if(target && target.type==='creature'){ target.atk=Math.max(0,target.atk-3); } break;
+    case 'heal': G.players[ownerP].hp=Math.min(G.players[ownerP].maxHp, G.players[ownerP].hp+4); SFX.heal(); updateHP(); break;
+    case 'weaken': if(target && target.type==='creature'){ target.def=Math.max(0,target.def-3); } break;
+    case 'bolt': {
+      G.players[opponentP].hp-=3; SFX.hit(); screenFlash('#ff4757'); G.players[ownerP].dmgDealt+=3; updateHP();
+      showDmgFloat(document.getElementById(opponentP===myPlayerId?'me-hpBar':'opp-hpBar'),3);
+    } break;
+    case 'meteor': {
+      G.players[opponentP].hp-=5; SFX.hit(); screenFlash('#ff4757',300); G.players[ownerP].dmgDealt+=5; updateHP();
+      showDmgFloat(document.getElementById(opponentP===myPlayerId?'me-hpBar':'opp-hpBar'),5);
+    } break;
+    case 'inspect': if(target){ addLog(target.counterfeit ? `🔍 ${target.name} is NEP!` : `🔍 ${target.name} is echt.`, 'info'); } break;
   }
-  pl.hand=pl.hand.filter(c=>c.id!==card.id);
-  pl.spellsCast++;
-  await saveGameState();
+  addLog(`${card.name}${isTrap?' (VAL!)':''} gaat af!`,'info');
 }
 
 // ═══════════════════════════════════════
@@ -1303,122 +1379,225 @@ async function playSpell(card){
 // (Runs purely locally on both clients simultaneously)
 // ═══════════════════════════════════════
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-function getArenaDOM(pid) { return pid === myPlayerId ? 'me-arena' : 'opp-arena'; }
-function getHpBarDOM(pid) { return pid === myPlayerId ? 'me-hpBar' : 'opp-hpBar'; }
+
+function getLaneCardEl(p, laneIdx, row){
+  const prefix = p===myPlayerId ? 'me' : 'opp';
+  const slot = document.getElementById(laneSlotDomId(prefix, laneIdx, row));
+  return slot ? slot.querySelector('.card') : null;
+}
+function playCardAnim(p, laneIdx, row, animClass, dur=500){
+  const el = getLaneCardEl(p, laneIdx, row);
+  if(!el) return;
+  el.classList.remove(animClass); void el.offsetWidth;
+  el.classList.add(animClass);
+  setTimeout(()=>{ el.classList.remove(animClass); }, dur);
+}
+function animateAttack(p,laneIdx,row){ playCardAnim(p,laneIdx,row,'anim-attack',500); }
+function animateDefend(p,laneIdx,row){ playCardAnim(p,laneIdx,row,'anim-defend',400); }
+function animateCast(p,laneIdx,row){ playCardAnim(p,laneIdx,row,'anim-cast',600); }
+function animateTrapReveal(p,laneIdx,row){ playCardAnim(p,laneIdx,row,'anim-trap-reveal',500); }
+
+// Onthult een kaart; als het een NEP (counterfeit) wezen is, ontploft het meteen
+// (2 schade aan de tegenstander van de eigenaar) en is de plek daarna leeg.
+function revealAndCheckCounterfeit(ownerP, laneIdx, row){
+  const card = G.players[ownerP].lanes[laneIdx][row];
+  if(!card) return false;
+  if(!card.faceDown) return false; // al eerder onthuld, niet opnieuw laten ontploffen
+  card.faceDown = false;
+  if(card.type==='creature' && card.counterfeit){
+    const opponentP = ownerP===1?2:1;
+    G.players[opponentP].hp -= 2; G.players[ownerP].dmgDealt += 2;
+    addLog(`💥 BOOBY TRAP! ${card.name} was NEP!`,'dmg');
+    SFX.hit(); screenFlash('#ff4757');
+    showDmgFloat(document.getElementById(opponentP===myPlayerId?'me-hpBar':'opp-hpBar'), 2);
+    G.players[ownerP].lanes[laneIdx][row] = null;
+    return true; // plek is nu leeg
+  }
+  return false;
+}
 
 async function startResolution(){
   G.logEntries = []; // Clear logs for combat clarity
-  showBanner('⚔️ CLASH! ⚔️','Kaarten worden onthuld!');
-  
-  await sleep(700);
-  const c1=G.players[1].arenaCard, c2=G.players[2].arenaCard;
-  if(c1){ c1.faceDown=false; SFX.flip(); }
-  if(c2){ c2.faceDown=false; setTimeout(()=>SFX.flip(),200); }
-  renderAll();
-  
-  await sleep(1000);
+  showBanner('⚔️ CLASH! ⚔️','Alle voorhoedes vallen aan, op volgorde van snelheid!');
+  await sleep(900);
   await resolveCombatDeterministic();
 }
 
+function dealDirectDamage(attacker, attackerP, defenderP, laneIdx){
+  const dmg = attacker.atk;
+  animateAttack(attackerP, laneIdx, 'front');
+  if(dmg<=0) return;
+  G.players[defenderP].hp -= dmg;
+  G.players[attackerP].dmgDealt += dmg;
+  SFX.hit(); screenFlash('#ff4757');
+  showDmgFloat(document.getElementById(defenderP===myPlayerId?'me-hpBar':'opp-hpBar'), dmg);
+  addLog(`${attacker.name} breekt volledig door in lane ${laneIdx+1}: ${dmg} schade!`,'dmg');
+  if(attacker.passive && attacker.passive.type==='relic_exhaust') attacker.atk = Math.max(0, attacker.atk - attacker.passive.val);
+}
+
+// Voorhoede vs voorhoede: pure ATK-vs-ATK duel (DEF telt hier niet mee).
+function resolveFrontDuel(attacker, defender, attackerP, defenderP, laneIdx){
+  animateAttack(attackerP, laneIdx, 'front');
+  animateDefend(defenderP, laneIdx, 'front');
+  SFX.hit();
+  const aAtk=attacker.atk, dAtk=defender.atk;
+  if(aAtk>dAtk){
+    addLog(`${attacker.name} verslaat ${defender.name} in de voorhoede-duel!`,'dmg');
+    handleOnDeathLocal(defender, defenderP, attackerP);
+    G.players[defenderP].lanes[laneIdx].front = null;
+  } else if(dAtk>aAtk){
+    addLog(`${defender.name} verslaat ${attacker.name} in de voorhoede-duel!`,'dmg');
+    handleOnDeathLocal(attacker, attackerP, defenderP);
+    G.players[attackerP].lanes[laneIdx].front = null;
+  } else {
+    addLog(`${attacker.name} en ${defender.name} vernietigen elkaar (gelijke ATK)!`,'dmg');
+    handleOnDeathLocal(defender, defenderP, attackerP);
+    handleOnDeathLocal(attacker, attackerP, defenderP);
+    G.players[defenderP].lanes[laneIdx].front = null;
+    G.players[attackerP].lanes[laneIdx].front = null;
+  }
+}
+
+// Voorhoede-aanvaller vs achterhoede-verdediger: bestaande ATK-vs-DEF rekensom (schild/doorns/fort/etc.)
+function resolveAttackVsDefender(attacker, defender, attackerP, defenderP, laneIdx){
+  animateAttack(attackerP, laneIdx, 'front');
+  animateDefend(defenderP, laneIdx, 'back');
+  let def = defender.def;
+  if(defender.passive && defender.passive.type==='fort') def += defender.passive.val;
+
+  let blocked=false;
+  if(defender.shieldActive){
+    if(attacker.passive && attacker.passive.type==='relic_pierce'){ addLog(`${attacker.name} negeert het Schild!`,'info'); }
+    else { defender.shieldActive=false; blocked=true; addLog(`${defender.name}'s Schild absorbeert de klap!`,'info'); }
+  }
+
+  if(!blocked){
+    if(defender.passive && defender.passive.type==='thorns') G.players[attackerP].hp -= defender.passive.val;
+    const atk = attacker.atk;
+    SFX.hit();
+    if(atk>def){
+      const overflow = atk-def;
+      G.players[attackerP].dmgDealt += overflow; G.players[defenderP].hp -= overflow;
+      showDmgFloat(document.getElementById(defenderP===myPlayerId?'me-hpBar':'opp-hpBar'), overflow);
+      handleOnDeathLocal(defender, defenderP, attackerP);
+      G.players[defenderP].lanes[laneIdx].back = null;
+      addLog(`${attacker.name} doorbreekt de achterhoede: ${overflow} schade!`,'dmg');
+    } else if(atk===def && atk>0){
+      handleOnDeathLocal(defender, defenderP, attackerP);
+      G.players[defenderP].lanes[laneIdx].back = null;
+      addLog(`${attacker.name} verslaat ${defender.name} in de achterhoede!`,'dmg');
+    } else {
+      addLog(`${defender.name} houdt stand tegen ${attacker.name}.`,'info');
+    }
+    if(attacker.passive && attacker.passive.type==='relic_exhaust') attacker.atk = Math.max(0, attacker.atk - attacker.passive.val);
+  } else { SFX.hit(); }
+}
+
 async function resolveCombatDeterministic() {
-  let c1=G.players[1].arenaCard, c2=G.players[2].arenaCard;
+  // Initiative-rij: alle voorhoede-bezetters (wezens én spreuken) van BEIDE
+  // spelers, op SPD gesorteerd. Alleen voorhoede-kaarten nemen een beurt —
+  // achterhoede verdedigt/absorbeert alleen en handelt zelf nooit.
+  const queue = [];
+  for(let p=1;p<=2;p++){
+    G.players[p].lanes.forEach((lane,i)=>{ if(lane.front) queue.push({ ownerP:p, laneIdx:i }); });
+  }
+  queue.sort((a,b)=>{
+    const ca=G.players[a.ownerP].lanes[a.laneIdx].front, cb=G.players[b.ownerP].lanes[b.laneIdx].front;
+    return (cb?cb.spd:0) - (ca?ca.spd:0);
+  });
 
-  const explode = (which)=>{
-    let c = which === 1 ? c1 : c2;
-    let target = which === 1 ? 2 : 1;
-    if(c && c.counterfeit){
-      const dmg = 2; G.players[target].hp -= dmg; G.players[which].dmgDealt += dmg;
-      addLog(`💥 BOOBY TRAP! ${c.name} was NEP!`,'dmg');
-      SFX.hit(); screenFlash('#ff4757'); showDmgFloat(document.getElementById(getHpBarDOM(target)),dmg);
-      G.players[which].arenaCard=null; 
-      if(which === 1) c1 = null; else c2 = null;
+  const foughtEntries = []; // voor onsurvive_heal na afloop
+
+  for(const entry of queue){
+    const { ownerP, laneIdx } = entry;
+    const opponentP = ownerP===1 ? 2 : 1;
+    let atkCard = G.players[ownerP].lanes[laneIdx].front;
+    if(!atkCard) continue; // inmiddels weg (bv. eerder vernietigd), sla over
+
+    if(revealAndCheckCounterfeit(ownerP, laneIdx, 'front')){ renderAll(); await sleep(600); if(checkWinLocal()) return; continue; }
+    renderAll();
+    await sleep(450);
+
+    atkCard = G.players[ownerP].lanes[laneIdx].front;
+    if(!atkCard) continue;
+
+    if(atkCard.type==='spell'){
+      animateCast(ownerP, laneIdx, 'front');
+      addLog(`${atkCard.name} (${ownerP===myPlayerId?'jij':'tegenstander'}) gaat af!`,'info');
+      applySpellEffect(atkCard, ownerP, opponentP, {mode:'cast', laneIdx});
+      G.players[ownerP].spellsCast++;
+      G.players[ownerP].lanes[laneIdx].front = null; // spreuk is verbruikt
+      renderAll(); updateHP();
+      if(checkWinLocal()) return;
+      await sleep(700);
+      continue;
     }
-  };
-  explode(1); explode(2);
-  updateHP(); renderAll();
-  if(checkWinLocal()) return;
 
-  if(c1 && c2){
-    let first,second,firstP,secondP;
-    if(c1.spd>c2.spd){ first=c1; second=c2; firstP=1; secondP=2; }
-    else if(c2.spd>c1.spd){ first=c2; second=c1; firstP=2; secondP=1; }
-    else { first=c1; second=c2; firstP=1; secondP=2; } // Deterministic: P1 wint ties
+    foughtEntries.push({ownerP, laneIdx, row:'front', cardId:atkCard.id});
 
-    if(first.passive && first.passive.type==='fort') first.def+=first.passive.val;
-    if(second.passive && second.passive.type==='fort') second.def+=second.passive.val;
-    if(first.spd - second.spd >= 3){ second.def += 2; addLog(`Underdog Pantser! ${second.name} krijgt +2 DEF`,'info'); }
-
-    applySynergy(first,second,firstP,secondP);
-    addLog(`${first.name} (SPD ${first.spd}) valt eerst aan!`,'info');
-
-    let blocked1=false;
-    if(second.shieldActive){
-      if(first.passive && first.passive.type==='relic_pierce'){ addLog(`${first.name} negeert het Schild!`,'info'); } 
-      else { second.shieldActive=false; blocked1=true; addLog(`${second.name}'s Schild absorbeert de klap!`,'info'); }
+    let targetFront = G.players[opponentP].lanes[laneIdx].front;
+    if(targetFront){
+      if(revealAndCheckCounterfeit(opponentP, laneIdx, 'front')) targetFront = null;
     }
 
-    let secondDestroyed=false;
-    if(!blocked1){
-      if(second.passive && second.passive.type==='thorns') G.players[firstP].hp-=second.passive.val;
-      const effAtk1=first.atk;
-
-      if(effAtk1>second.def){
-        const overflow=effAtk1-second.def;
-        secondDestroyed=true;
-        if(effAtk1 >= 6) await sleep(120); // Hitstop
-        SFX.hit();
-        G.players[firstP].dmgDealt+=overflow; G.players[secondP].hp-=overflow;
-        showDmgFloat(document.getElementById(getHpBarDOM(secondP)),overflow);
-        handleOnDeathLocal(second,secondP,firstP);
-      } else if(effAtk1===second.def && effAtk1>0){
-        secondDestroyed=true; SFX.hit(); handleOnDeathLocal(second,secondP,firstP);
+    if(targetFront){
+      if(targetFront.type==='spell'){
+        addLog(`${atkCard.name} vernietigt ${targetFront.name} voor die kon afgaan!`,'dmg');
+        animateAttack(ownerP, laneIdx, 'front');
+        G.players[opponentP].lanes[laneIdx].front = null;
+      } else {
+        applySynergy(atkCard, targetFront, ownerP, opponentP);
+        foughtEntries.push({ownerP:opponentP, laneIdx, row:'front', cardId:targetFront.id});
+        resolveFrontDuel(atkCard, targetFront, ownerP, opponentP, laneIdx);
       }
-      
-      if(first.passive && first.passive.type==='relic_exhaust') first.atk = Math.max(0, first.atk - first.passive.val);
-    }
-    updateHP(); if(checkWinLocal()) return;
-
-    if(!secondDestroyed){
-      await sleep(1400);
-      let blocked2=false;
-      if(first.shieldActive){ first.shieldActive=false; blocked2=true; }
-      if(!blocked2){
-        if(first.passive && first.passive.type==='thorns') G.players[secondP].hp-=first.passive.val;
-        const effAtk2=second.atk;
-
-        if(effAtk2>first.def){
-          const overflow2=effAtk2-first.def;
-          if(effAtk2 >= 6) await sleep(120);
-          SFX.hit();
-          G.players[secondP].dmgDealt+=overflow2; G.players[firstP].hp-=overflow2;
-          showDmgFloat(document.getElementById(getHpBarDOM(firstP)),overflow2);
-          handleOnDeathLocal(first,firstP,secondP);
-        } else if(effAtk2===first.def && effAtk2>0){
-          SFX.hit(); handleOnDeathLocal(first,firstP,secondP);
-        }
-        if(second.passive && second.passive.type==='relic_exhaust') second.atk = Math.max(0, second.atk - second.passive.val);
+    } else {
+      let targetBack = G.players[opponentP].lanes[laneIdx].back;
+      if(targetBack){
+        if(revealAndCheckCounterfeit(opponentP, laneIdx, 'back')) targetBack = null;
       }
-      updateHP(); if(checkWinLocal()) return;
+      if(targetBack && targetBack.type==='spell'){
+        // VAL: gaat af zodra de aanval de lane binnendringt (voorhoede was al weg)
+        animateTrapReveal(opponentP, laneIdx, 'back');
+        addLog(`⚠️ VAL! ${targetBack.name} van ${opponentP===myPlayerId?'jou':'de tegenstander'} gaat af!`,'dmg');
+        applySpellEffect(targetBack, opponentP, ownerP, {mode:'trap', laneIdx, attackerCard:atkCard});
+        G.players[opponentP].spellsCast++;
+        G.players[opponentP].lanes[laneIdx].back = null;
+        renderAll(); updateHP();
+        if(checkWinLocal()) return;
+        await sleep(700);
+        // val verbruikt zichzelf — de aanval gaat (evt. verzwakt) door naar de speler
+        atkCard = G.players[ownerP].lanes[laneIdx].front;
+        if(atkCard) dealDirectDamage(atkCard, ownerP, opponentP, laneIdx);
+      } else if(targetBack){
+        foughtEntries.push({ownerP:opponentP, laneIdx, row:'back', cardId:targetBack.id});
+        resolveAttackVsDefender(atkCard, targetBack, ownerP, opponentP, laneIdx);
+      } else {
+        dealDirectDamage(atkCard, ownerP, opponentP, laneIdx);
+      }
     }
-  } else if(c1 && !c2){
-    const dmg=c1.atk; G.players[2].hp-=dmg; G.players[1].dmgDealt+=dmg;
-    SFX.hit(); showDmgFloat(document.getElementById('opp-hpBar'),dmg); updateHP(); if(checkWinLocal()) return;
-  } else if(c2 && !c1){
-    const dmg=c2.atk; G.players[1].hp-=dmg; G.players[2].dmgDealt+=dmg;
-    SFX.hit(); showDmgFloat(document.getElementById('me-hpBar'),dmg); updateHP(); if(checkWinLocal()) return;
+
+    updateHP(); renderAll();
+    if(checkWinLocal()) return;
+    await sleep(900);
   }
 
   // Host Only cleanup sync to ensure exact state matching
   if(myPlayerId === 1) {
-      await sleep(1500);
-      for(let p=1;p<=2;p++){
-        const c = G.players[p].arenaCard;
-        if(c && c.passive && c.passive.type==='onsurvive_heal'){
-          G.players[p].hp = Math.min(G.players[p].maxHp, G.players[p].hp + c.passive.val);
+      await sleep(600);
+      foughtEntries.forEach(fe=>{
+        const c = G.players[fe.ownerP].lanes[fe.laneIdx][fe.row];
+        if(c && c.id===fe.cardId && c.passive && c.passive.type==='onsurvive_heal'){
+          G.players[fe.ownerP].hp = Math.min(G.players[fe.ownerP].maxHp, G.players[fe.ownerP].hp + c.passive.val);
         }
+      });
+      for(let p=1;p<=2;p++){
+        G.players[p].lanes.forEach(lane=>{
+          ['front','back'].forEach(row=>{
+            const c=lane[row];
+            if(c && c.type==='creature'){ c.atk=c.baseAtk; c.def=c.baseDef; c.spd=c.baseSpd; }
+          });
+        });
       }
-      G.players[1].arenaCard=null; G.players[2].arenaCard=null;
-      for(let p=1;p<=2;p++){ G.players[p].localSlots.forEach(c=>{ if(c){ c.atk=c.baseAtk; c.def=c.baseDef; c.spd=c.baseSpd; } }); }
       G.turn++; G.phase = 'action';
       G.players[1].ready = false; G.players[2].ready = false;
       await applyLocalTurnEffects(); // Host calculates HP drain / regen
@@ -1516,7 +1695,7 @@ function onCardPointerDown(e,card,player,zone){
     try{ dragState.sourceEl.releasePointerCapture(dragState.pointerId); }catch(err){}
     
     if(dragState.moved) await finishDrag(dragState,ev);
-    else if(zone === 'hand' && card.type === 'creature') await placeCard(card); 
+    else if(zone === 'hand') await placeCard(card); 
     
     clearDropHighlights(); dragState=null;
   };
@@ -1543,14 +1722,12 @@ function updateGhostPos(ds,ev){
 }
 
 function highlightDropTargets(ds){
-  if(ds.zone==='hand' && ds.card.type==='creature'){ document.querySelectorAll(`#me-local .slot`).forEach(s=>s.classList.add('drop-target')); } 
-  else if(ds.zone==='slot' && ds.card.type==='creature'){ document.getElementById(`me-arena`).classList.add('drop-target'); } 
-  else if(ds.zone==='hand' && ds.card.type==='spell'){ document.getElementById(`opp-half`).classList.add('drop-zone-active'); }
+  // Vanuit de hand mag elke kaart (wezen of spreuk) naar élke eigen lane-plek — voor of achter.
+  if(ds.zone==='hand'){ document.querySelectorAll(`#me-lanes .lane-slot`).forEach(s=>s.classList.add('drop-target')); }
 }
 
 function clearDropHighlights(){
   document.querySelectorAll('.drop-target').forEach(s=>s.classList.remove('drop-target','drop-target-hover'));
-  document.querySelectorAll('.drop-zone-active').forEach(s=>s.classList.remove('drop-zone-active'));
 }
 
 function updateHoverHighlight(ds,ev){
@@ -1559,8 +1736,7 @@ function updateHoverHighlight(ds,ev){
   const el=document.elementFromPoint(ev.clientX,ev.clientY);
   if(ds.ghost) ds.ghost.style.display='';
   if(!el) return;
-  const slot=el.closest('.slot'); if(slot && slot.classList.contains('drop-target')) slot.classList.add('drop-target-hover');
-  const arenaSlot=el.closest('.arena-slot'); if(arenaSlot && arenaSlot.classList.contains('drop-target')) arenaSlot.classList.add('drop-target-hover');
+  const slot=el.closest('.lane-slot'); if(slot && slot.classList.contains('drop-target')) slot.classList.add('drop-target-hover');
 }
 
 async function finishDrag(ds,ev){
@@ -1570,17 +1746,9 @@ async function finishDrag(ds,ev){
   if(ds.ghost) ds.ghost.remove();
 
   let dropped=false;
-  if(el){
-    if(ds.zone==='hand' && ds.card.type==='creature'){
-      const slot=el.closest('.slot');
-      if(slot && Number(slot.dataset.player)===ds.player) dropped = await placeCard(ds.card, parseInt(slot.dataset.slotIdx));
-    } else if(ds.zone==='slot' && ds.card.type==='creature'){
-      const arenaSlot=el.closest('.arena-slot');
-      if(arenaSlot && arenaSlot.id===`me-arena`) dropped = await sendToArena(ds.card);
-    } else if(ds.zone==='hand' && ds.card.type==='spell'){
-      const half=el.closest(`#opp-half`);
-      if(half){ await playSpell(ds.card); dropped=true; }
-    }
+  if(el && ds.zone==='hand'){
+    const slot=el.closest('.lane-slot');
+    if(slot && slot.closest('#me-lanes')) dropped = await placeCard(ds.card, parseInt(slot.dataset.lane), slot.dataset.row);
   }
   if(!dropped) SFX.tap();
 }
@@ -1625,7 +1793,7 @@ function startDisconnectWatcher(){
     const statusEl = document.getElementById('opp-status');
     if(!statusEl) return;
     const lastSeen = G.players[oppPlayerId].lastSeen || 0;
-    if(Date.now() - lastSeen > 20000){
+    if(Date.now() - lastSeen > 26000){
       statusEl.innerText = 'MOGELIJK OFFLINE ⚠️';
       statusEl.style.color = '#e63946';
     }
@@ -1637,6 +1805,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.body.addEventListener('touchmove',(e)=>e.preventDefault(),{passive:false});
   initFirebase();
   startDisconnectWatcher();
+  startHeartbeat();
 });
 
 </script>
